@@ -268,30 +268,6 @@
     .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
     .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
 
-    #legend {
-      position: absolute;
-      bottom: 30px; left: 10px;
-      background: rgba(13,15,20,.88);
-      border: 1px solid #2a2f3d;
-      border-radius: 6px;
-      padding: 8px 10px;
-      z-index: 900;
-      font-size: 11px;
-      display: none;
-    }
-    #legend-title {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: .08em; text-transform: uppercase;
-      color: #4b6fa8; margin-bottom: 5px;
-    }
-    .legend-row {
-      display: flex; align-items: center; gap: 6px; margin: 2px 0;
-      cursor: pointer; user-select: none;
-    }
-    .legend-row:hover { color: #fff; }
-    .legend-row.disabled { opacity: .35; }
-    .legend-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); flex-shrink: 0; }
-    .legend-check { width: 12px; height: 12px; accent-color: #7eb8f7; margin: 0; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -383,10 +359,6 @@
   </div>
 </div>
 
-<div id="legend">
-  <div id="legend-title">Ore Filter</div>
-  <div id="legend-rows"></div>
-</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -853,11 +825,10 @@ L.control.layers({}, {
 map.on('overlayadd', e => {
   if (e.layer !== depositLayer) return;
   document.getElementById('ore-filter-box').style.display = '';
-  // depositLayer is back on the map — exotic sublayer is now rendered through it,
-  // so drop the direct map layer we added when the deposit layer was off.
-  if (exoticHighlightOn && map.hasLayer(oreSubLayers.Exotic)) {
-    map.removeLayer(oreSubLayers.Exotic);
-  }
+  // oreSubLayers.Exotic may already be in map._layers from a direct add (exotic
+  // highlight active while deposit layer was off).  depositLayer.onAdd already
+  // skipped re-adding it (Leaflet deduplicates), so there is no double-render —
+  // just leave it alone.  overlayremove will re-add it if needed.
 });
 map.on('overlayremove', e => {
   if (e.layer !== depositLayer) return;
@@ -906,19 +877,14 @@ const oreSubLayers = {};
 for (const ore of Object.keys(ORE_COLOR)) oreSubLayers[ore] = L.layerGroup().addTo(depositLayer);
 
 (function buildLegend() {
-  const rows = document.getElementById('legend-rows');
+  const filterBody = document.getElementById('ore-filter-body');
   for (const [ore, color] of Object.entries(ORE_COLOR)) {
-    const row = document.createElement('div');
-    row.className = 'legend-row';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = true; cb.className = 'legend-check'; cb.dataset.ore = ore;
-    cb.addEventListener('change', () => toggleOre(ore, cb.checked));
-    const dot = document.createElement('div');
-    dot.className = 'legend-dot'; dot.style.background = color;
-    const span = document.createElement('span'); span.textContent = ore;
-    row.appendChild(cb); row.appendChild(dot); row.appendChild(span);
-    row.addEventListener('click', e => { if (e.target !== cb) { cb.checked = !cb.checked; toggleOre(ore, cb.checked); } });
-    rows.appendChild(row);
+    const chip = document.createElement('div');
+    chip.className = 'ore-chip';
+    chip.dataset.ore = ore;
+    chip.innerHTML = `<div class="ore-chip-dot" style="background:${color}"></div>${ore}`;
+    chip.addEventListener('click', () => toggleOre(ore, !oreEnabled[ore]));
+    filterBody.appendChild(chip);
   }
 })();
 
@@ -926,10 +892,7 @@ function toggleOre(ore, visible) {
   oreEnabled[ore] = visible;
   if (visible) { if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]); }
   else depositLayer.removeLayer(oreSubLayers[ore]);
-  document.querySelectorAll('.legend-row').forEach(row => {
-    const cb = row.querySelector('.legend-check');
-    if (cb) row.classList.toggle('disabled', !cb.checked);
-  });
+  document.querySelectorAll(`.ore-chip[data-ore="${ore}"]`).forEach(c => c.classList.toggle('off', !visible));
 }
 
 function setAllOres(visible) {
@@ -938,8 +901,7 @@ function setAllOres(visible) {
     if (visible) { if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]); }
     else depositLayer.removeLayer(oreSubLayers[ore]);
   });
-  document.querySelectorAll('.legend-check').forEach(cb => { cb.checked = visible; });
-  document.querySelectorAll('.legend-row').forEach(row => row.classList.toggle('disabled', !visible));
+  document.querySelectorAll('.ore-chip').forEach(c => c.classList.toggle('off', !visible));
 }
 
 // ═══════════════════════════════════════════════════════════════
