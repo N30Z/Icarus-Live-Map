@@ -35,10 +35,7 @@
       text-transform: uppercase;
       color: #7eb8f7;
     }
-    #player-count {
-      font-size: 12px;
-      color: #6b7280;
-    }
+    #player-count { font-size: 12px; color: #6b7280; }
     #status {
       margin-left: auto;
       display: flex;
@@ -48,23 +45,19 @@
       color: #6b7280;
     }
     #status-dot {
-      width: 7px;
-      height: 7px;
+      width: 7px; height: 7px;
       border-radius: 50%;
       background: #22c55e;
       transition: background .3s;
     }
-    #status-dot.stale { background: #ef4444; }
+    #status-dot.stale   { background: #ef4444; }
     #status-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
     /* ── Map ─────────────────────────────────────────────────── */
-    #map {
-      flex: 1;
-      background: #0d1117;
-    }
+    #map { flex: 1; background: #0d1117; }
 
-    /* ── Player Tooltip ──────────────────────────────────────── */
+    /* ── Player tooltip ──────────────────────────────────────── */
     .leaflet-tooltip.player-label {
       background: rgba(13,15,20,.85);
       border: 1px solid #2a3a55;
@@ -80,22 +73,18 @@
     }
     .leaflet-tooltip.player-label::before { display: none; }
 
-    /* ── Coords bar ──────────────────────────────────────────── */
+    /* ── Coord bar ───────────────────────────────────────────── */
     #coords {
       position: absolute;
-      bottom: 6px;
-      right: 10px;
-      font-size: 11px;
-      color: #4a5568;
-      z-index: 999;
-      pointer-events: none;
+      bottom: 6px; right: 10px;
+      font-size: 11px; color: #4a5568;
+      z-index: 999; pointer-events: none;
     }
 
-    /* ── Player sidebar (right panel) ───────────────────────── */
+    /* ── Player sidebar ──────────────────────────────────────── */
     #sidebar {
       position: absolute;
-      top: 48px;
-      right: 10px;
+      top: 48px; right: 10px;
       width: 210px;
       background: rgba(13,15,20,.88);
       border: 1px solid #2a2f3d;
@@ -106,10 +95,8 @@
     }
     #sidebar-title {
       padding: 7px 12px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .08em;
-      text-transform: uppercase;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
       color: #4b6fa8;
       border-bottom: 1px solid #1e2535;
     }
@@ -120,23 +107,53 @@
       transition: background .15s;
     }
     .player-item:hover { background: #1a1f2e; }
-    .player-item .name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #c8d0e0;
-    }
-    .player-item .coords-text {
-      font-size: 10px;
-      color: #4a5568;
-      margin-top: 1px;
-    }
+    .player-item .name { font-size: 13px; font-weight: 600; color: #c8d0e0; }
+    .player-item .coords-text { font-size: 10px; color: #4a5568; margin-top: 1px; }
     .player-item .online-dot {
       display: inline-block;
-      width: 6px;
-      height: 6px;
+      width: 6px; height: 6px;
       border-radius: 50%;
       margin-right: 5px;
       vertical-align: middle;
+    }
+
+    /* ── Leaflet layer control dark theme ────────────────────── */
+    .leaflet-control-layers {
+      background: rgba(13,15,20,.92) !important;
+      border: 1px solid #2a2f3d !important;
+      border-radius: 6px !important;
+      color: #c8d0e0 !important;
+    }
+    .leaflet-control-layers-toggle {
+      background-color: #13161f !important;
+    }
+    .leaflet-control-layers-list { padding: 4px 8px; }
+    .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
+    .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
+
+    /* ── Ore legend ──────────────────────────────────────────── */
+    #legend {
+      position: absolute;
+      bottom: 30px; left: 10px;
+      background: rgba(13,15,20,.88);
+      border: 1px solid #2a2f3d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      z-index: 900;
+      font-size: 11px;
+      display: none;       /* shown only when Deposits layer is active */
+    }
+    #legend-title {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: #4b6fa8; margin-bottom: 5px;
+    }
+    .legend-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.25);
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -152,7 +169,6 @@
 </div>
 
 <div id="map"></div>
-
 <div id="coords"></div>
 
 <div id="sidebar">
@@ -160,36 +176,43 @@
   <div id="player-list"></div>
 </div>
 
+<div id="legend">
+  <div id="legend-title">Ore Types</div>
+  <div id="legend-rows"></div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  CONFIG — adjust if markers appear in wrong positions
+//  CONFIG
 // ═══════════════════════════════════════════════════════════════
 
-// Map image file (place in the same folder as this HTML)
-const MAP_IMAGE = 'map.jpg';
-
-// Prospect bounds in meters.
-// Standard Styx/Olympus D-tier prospect: 8 192 × 8 192 m
-// Open-world / E-tier: may be larger.  Adjust until the grid fits.
-const MAP_MIN = -4096;   // west / south edge  (meters)
-const MAP_MAX =  4096;   // east / north edge  (meters)
-
-// UE4 → Leaflet coordinate transform.
-// Leaflet Simple CRS:  lat = Y (positive = up/north)
-//                      lng = X (positive = right/east)
-// In UE4 the Y-axis typically runs north, but some prospects are
-// rotated.  If players appear mirrored, flip Y_SIGN to -1.
-const Y_SIGN = -1;   // -1 flips Y (UE4 south-positive → north-positive)
-
-// How often to poll players.json (milliseconds)
+const MAP_IMAGE    = 'map.jpg';
+const MAP_MIN      = -4096;
+const MAP_MAX      =  4096;
+const Y_SIGN       = -1;
 const POLL_INTERVAL = 5000;
 
-// Player dot colours (cycles through these)
-const COLOURS = [
+const PLAYER_COLOURS = [
   '#60a5fa', '#34d399', '#f87171', '#fbbf24',
   '#a78bfa', '#fb923c', '#38bdf8', '#4ade80',
 ];
+
+const ORE_COLOR = {
+  Iron:      '#a0a0a0',
+  Coal:      '#6b6b6b',
+  Copper:    '#cd7f32',
+  Gold:      '#ffd700',
+  Platinum:  '#d0d0d0',
+  Titanium:  '#4a9ece',
+  Aluminium: '#7fb8d8',
+  Silicon:   '#8899bb',
+  Oxite:     '#00d4ff',
+  Sulfur:    '#d4d400',
+  Salt:      '#f0eee8',
+  Stone:     '#966f50',
+  Exotic:    '#cc22cc',
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  MAP SETUP
@@ -199,154 +222,242 @@ const bounds = [[MAP_MIN, MAP_MIN], [MAP_MAX, MAP_MAX]];
 
 const map = L.map('map', {
   crs: L.CRS.Simple,
-  minZoom: -4,
-  maxZoom:  5,
-  zoomSnap: 0.5,
-  zoomDelta: 0.5,
+  minZoom: -4, maxZoom: 5,
+  zoomSnap: 0.5, zoomDelta: 0.5,
+  zoomControl: false,
   maxBounds: [[MAP_MIN * 1.1, MAP_MIN * 1.1], [MAP_MAX * 1.1, MAP_MAX * 1.1]],
   maxBoundsViscosity: 0.8,
 });
 
-// Background image
+L.control.zoom({ position: 'topleft' }).addTo(map);
 L.imageOverlay(MAP_IMAGE, bounds, { errorOverlayUrl: '' }).addTo(map);
 map.fitBounds(bounds);
 
-// Coordinate display on mousemove
 map.on('mousemove', e => {
   const x = e.latlng.lng.toFixed(0);
-  const y = (e.latlng.lat * Y_SIGN).toFixed(0);   // show raw UE4 Y
+  const y = (e.latlng.lat * Y_SIGN).toFixed(0);
   document.getElementById('coords').textContent = `X ${x} m   Y ${y} m`;
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  LAYER GROUPS
+// ═══════════════════════════════════════════════════════════════
+
+const playerLayer  = L.layerGroup().addTo(map);
+const enzymeLayer  = L.layerGroup().addTo(map);
+const oilLayer     = L.layerGroup().addTo(map);
+const caveLayer    = L.layerGroup().addTo(map);
+const depositLayer = L.layerGroup();   // off by default
+
+L.control.layers({}, {
+  'Enzyme Geysers': enzymeLayer,
+  'Oil Geysers':    oilLayer,
+  'Caves':          caveLayer,
+  'Deposits':       depositLayer,
+}, { collapsed: true, position: 'topleft' }).addTo(map);
+
+// Show ore legend only while deposits layer is visible
+map.on('overlayadd',    e => { if (e.layer === depositLayer) showLegend(true);  });
+map.on('overlayremove', e => { if (e.layer === depositLayer) showLegend(false); });
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function toLatLng(x_m, y_m) { return [y_m * Y_SIGN, x_m]; }
+
+function yawToCompass(yaw) {
+  // UE4 yaw: 0 = East, 90 = North, ±180 = West, -90 = South
+  const bearing = ((90 - yaw) % 360 + 360) % 360;
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE',
+                'S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(bearing / 22.5) % 16];
+}
+
+function remainingLabel(r) {
+  if (r === null || r === undefined) return 'Full';
+  if (r <= 0) return 'Depleted';
+  return 'Partial';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ORE LEGEND
+// ═══════════════════════════════════════════════════════════════
+
+(function buildLegend() {
+  const rows = document.getElementById('legend-rows');
+  for (const [ore, color] of Object.entries(ORE_COLOR)) {
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    row.innerHTML = `<div class="legend-dot" style="background:${color}"></div><span>${ore}</span>`;
+    rows.appendChild(row);
+  }
+})();
+
+function showLegend(visible) {
+  document.getElementById('legend').style.display = visible ? 'block' : 'none';
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  PLAYER LAYER
 // ═══════════════════════════════════════════════════════════════
 
-const playerLayer  = L.layerGroup().addTo(map);
-const playerState  = {};   // steam_id → { marker, colour }
-let   colourIndex  = 0;
+const playerState = {};
+let colourIdx = 0;
 
-function toLatLng(x_m, y_m) {
-  return [y_m * Y_SIGN, x_m];
-}
-
-function getColour(steam_id) {
-  if (!playerState[steam_id]) {
-    playerState[steam_id] = { colour: COLOURS[colourIndex % COLOURS.length] };
-    colourIndex++;
+function getColour(id) {
+  if (!playerState[id]) {
+    playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
   }
-  return playerState[steam_id].colour;
+  return playerState[id].colour;
 }
 
-function buildPlayerMarker(p) {
-  const colour = getColour(p.steam_id);
-  const latlng = toLatLng(p.x_m, p.y_m);
+function updatePlayers(players) {
+  const online = players.filter(p => p.online);
 
-  const marker = L.circleMarker(latlng, {
-    radius: 7,
-    color: colour,
-    fillColor: colour,
-    fillOpacity: 0.85,
-    weight: 2,
-  }).addTo(playerLayer);
+  document.getElementById('player-count').textContent =
+    `${online.length} / ${players.length} online`;
 
-  marker.bindTooltip(p.character_name, {
-    permanent: true,
-    direction: 'top',
-    offset: [0, -10],
-    className: 'player-label',
+  const seen = new Set();
+
+  online.forEach(p => {
+    seen.add(p.steam_id);
+    const ll = toLatLng(p.x_m, p.y_m);
+
+    if (playerState[p.steam_id]?.marker) {
+      playerState[p.steam_id].marker.setLatLng(ll);
+    } else {
+      const colour = getColour(p.steam_id);
+      const marker = L.circleMarker(ll, {
+        radius: 7, color: colour, fillColor: colour,
+        fillOpacity: 0.85, weight: 2,
+      }).addTo(playerLayer);
+      marker.bindTooltip(p.character_name, {
+        permanent: true, direction: 'top',
+        offset: [0, -10], className: 'player-label',
+      });
+      playerState[p.steam_id] = playerState[p.steam_id] || {};
+      playerState[p.steam_id].marker = marker;
+    }
   });
 
-  return marker;
+  // Remove markers for players who went offline
+  for (const id of Object.keys(playerState)) {
+    if (!seen.has(id) && playerState[id]?.marker) {
+      playerState[id].marker.remove();
+      playerState[id].marker = null;
+    }
+  }
+
+  // Sidebar
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  players.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'player-item';
+    const colour   = getColour(p.steam_id);
+    const dot      = `<span class="online-dot" style="background:${colour}"></span>`;
+    const coordTxt = p.online
+      ? `X ${p.x_m} m  Y ${p.y_m} m  Z ${p.z_m} m`
+      : 'offline';
+    item.innerHTML = `<div class="name">${dot}${p.character_name}</div>
+                      <div class="coords-text">${coordTxt}</div>`;
+    if (p.online && playerState[p.steam_id]?.marker) {
+      item.addEventListener('click', () => {
+        map.setView(toLatLng(p.x_m, p.y_m), 1, { animate: true });
+        playerState[p.steam_id].marker.openTooltip();
+      });
+    }
+    list.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATIC POI LAYERS  (redrawn only when server version changes)
+// ═══════════════════════════════════════════════════════════════
+
+function drawStaticPOIs(data) {
+  enzymeLayer.clearLayers();
+  oilLayer.clearLayers();
+  caveLayer.clearLayers();
+  depositLayer.clearLayers();
+
+  // ── Enzyme geysers ──
+  (data.geysers?.enzyme || []).forEach(g => {
+    const tip = `<b>Enzyme Geyser</b><br>`
+              + `Horde: ${g.horde || '?'}<br>`
+              + `Completions: ${g.completions ?? 0}<br>`
+              + `Active: ${g.active ? 'yes' : 'no'}`;
+    L.circleMarker(toLatLng(g.x_m, g.y_m), {
+      radius: 7, color: '#16a34a', fillColor: '#22c55e',
+      fillOpacity: 0.75, weight: 2,
+    }).bindTooltip(tip).addTo(enzymeLayer);
+  });
+
+  // ── Oil geysers ──
+  (data.geysers?.oil || []).forEach(g => {
+    const tip = `<b>Oil Geyser</b><br>Active: ${g.active ? 'yes' : 'no'}`;
+    L.circleMarker(toLatLng(g.x_m, g.y_m), {
+      radius: 7, color: '#78350f', fillColor: '#b45309',
+      fillOpacity: 0.75, weight: 2,
+    }).bindTooltip(tip).addTo(oilLayer);
+  });
+
+  // ── Caves ──
+  (data.caves || []).forEach(c => {
+    const facing  = c.yaw != null ? `  •  Facing ${yawToCompass(c.yaw)} (${c.yaw}°)` : '';
+    const mined   = c.fully_mined ? '  •  <b>Mined out</b>' : '';
+    const tip     = `<b>Cave Entrance</b>${mined}${facing}`;
+    L.circleMarker(toLatLng(c.x_m, c.y_m), {
+      radius: 5, color: '#9ca3af', fillColor: '#374151',
+      fillOpacity: 0.7, weight: 2,
+    }).bindTooltip(tip).addTo(caveLayer);
+  });
+
+  // ── Resource deposits ──
+  (data.deposits || []).forEach(d => {
+    const color   = ORE_COLOR[d.ore] || '#888';
+    const status  = remainingLabel(d.remaining);
+    const catStr  = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
+    const tip     = `<b>${d.ore}</b> [${catStr}]<br>Status: ${status}`;
+    L.circleMarker(toLatLng(d.x_m, d.y_m), {
+      radius: 4, color: 'rgba(255,255,255,0.3)', fillColor: color,
+      fillOpacity: 0.8, weight: 1,
+    }).bindTooltip(tip).addTo(depositLayer);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  POLLING
 // ═══════════════════════════════════════════════════════════════
 
-let lastUpdate = null;
+let lastVersion = -1;
 
 function setStatus(state, text) {
   const dot  = document.getElementById('status-dot');
   const span = document.getElementById('status-text');
-  dot.className = 'loading' === state ? 'loading' :
-                  'ok'      === state ? ''        : 'stale';
+  dot.className = state === 'loading' ? 'loading' : state === 'ok' ? '' : 'stale';
   span.textContent = text;
 }
 
-function updateSidebar(players) {
-  const list = document.getElementById('player-list');
-  list.innerHTML = '';
-  players.forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'player-item';
-
-    const colour = getColour(p.steam_id);
-    const dot    = `<span class="online-dot" style="background:${colour}"></span>`;
-
-    const coordText = p.online
-      ? `X ${p.x_m} m  Y ${p.y_m} m  Z ${p.z_m} m`
-      : 'offline';
-
-    item.innerHTML = `
-      <div class="name">${dot}${p.character_name}</div>
-      <div class="coords-text">${coordText}</div>
-    `;
-
-    if (p.online && playerState[p.steam_id]?.marker) {
-      item.addEventListener('click', () => {
-        const ll = toLatLng(p.x_m, p.y_m);
-        map.setView(ll, 1, { animate: true });
-        playerState[p.steam_id].marker.openTooltip();
-      });
-    }
-
-    list.appendChild(item);
-  });
-}
-
-function fetchPlayers() {
+function poll() {
   setStatus('loading', 'updating…');
 
-  fetch('players.json?_=' + Date.now())
+  fetch('/api/state?_=' + Date.now())
     .then(r => {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .then(data => {
-      const players = data.players || [];
-      const online  = players.filter(p => p.online);
-
-      document.getElementById('player-count').textContent =
-        `${online.length} / ${players.length} online`;
-
-      const seen = new Set();
-
-      online.forEach(p => {
-        seen.add(p.steam_id);
-        const latlng = toLatLng(p.x_m, p.y_m);
-
-        if (playerState[p.steam_id]?.marker) {
-          playerState[p.steam_id].marker.setLatLng(latlng);
-        } else {
-          const marker = buildPlayerMarker(p);
-          playerState[p.steam_id] = playerState[p.steam_id] || {};
-          playerState[p.steam_id].marker = marker;
-        }
-      });
-
-      // Remove players that went offline
-      for (const id of Object.keys(playerState)) {
-        if (!seen.has(id) && playerState[id].marker) {
-          playerState[id].marker.remove();
-          playerState[id].marker = null;
-        }
+      // Redraw static POIs only when the server re-parsed the save file
+      if (data.version !== lastVersion) {
+        drawStaticPOIs(data);
+        lastVersion = data.version;
       }
+      updatePlayers(data.players || []);
 
-      updateSidebar(players);
-      lastUpdate = new Date();
-      const time = lastUpdate.toLocaleTimeString();
-      setStatus('ok', `updated ${time}`);
+      const t = new Date().toLocaleTimeString();
+      setStatus('ok', `updated ${t}`);
     })
     .catch(err => {
       console.error(err);
@@ -354,8 +465,8 @@ function fetchPlayers() {
     });
 }
 
-fetchPlayers();
-setInterval(fetchPlayers, POLL_INTERVAL);
+poll();
+setInterval(poll, POLL_INTERVAL);
 </script>
 </body>
 </html>
