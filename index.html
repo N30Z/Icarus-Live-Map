@@ -850,8 +850,22 @@ L.control.layers({}, {
   'Deposits':       depositLayer,
 }, { collapsed: true, position: 'topleft' }).addTo(map);
 
-map.on('overlayadd',    e => { if (e.layer === depositLayer) document.getElementById('ore-filter-box').style.display = ''; });
-map.on('overlayremove', e => { if (e.layer === depositLayer) document.getElementById('ore-filter-box').style.display = 'none'; });
+map.on('overlayadd', e => {
+  if (e.layer !== depositLayer) return;
+  document.getElementById('ore-filter-box').style.display = '';
+  // depositLayer is back on the map — exotic sublayer is now rendered through it,
+  // so drop the direct map layer we added when the deposit layer was off.
+  if (exoticHighlightOn && map.hasLayer(oreSubLayers.Exotic)) {
+    map.removeLayer(oreSubLayers.Exotic);
+  }
+});
+map.on('overlayremove', e => {
+  if (e.layer !== depositLayer) return;
+  document.getElementById('ore-filter-box').style.display = 'none';
+  // depositLayer left the map — if exotic highlight is on, keep exotics visible
+  // by adding the sublayer directly to the map.
+  if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  PANEL COLLAPSE
@@ -936,6 +950,14 @@ document.getElementById('exotic-btn').addEventListener('click', () => {
   exoticHighlightOn = !exoticHighlightOn;
   document.getElementById('exotic-btn').classList.toggle('active', exoticHighlightOn);
   if (!oreSubLayers.Exotic) return;
+
+  // When the deposit layer is not on the map, exotics are invisible through their
+  // normal parent chain.  Add / remove the sublayer directly so they always show.
+  if (!map.hasLayer(depositLayer)) {
+    if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
+    else map.removeLayer(oreSubLayers.Exotic);
+  }
+
   oreSubLayers.Exotic.eachLayer(m => {
     if (exoticHighlightOn) {
       m._exoticHL = true;
