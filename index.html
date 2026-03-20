@@ -36,6 +36,23 @@
       color: #7eb8f7;
     }
     #player-count { font-size: 12px; color: #6b7280; }
+
+    /* ── Header buttons ──────────────────────────────────────── */
+    .hdr-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #c8d0e0;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .hdr-btn:hover { background: #222840; border-color: #3a4560; }
+    .hdr-btn.active { background: #cc22cc; border-color: #dd44dd; color: #fff; }
+
     #status {
       margin-left: auto;
       display: flex;
@@ -81,25 +98,41 @@
       z-index: 999; pointer-events: none;
     }
 
-    /* ── Player sidebar ──────────────────────────────────────── */
-    #sidebar {
+    /* ── Right panel (players + settings) ───────────────────── */
+    #right-panel {
       position: absolute;
       top: 48px; right: 10px;
-      width: 210px;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 900;
+    }
+
+    .panel-box {
       background: rgba(13,15,20,.88);
       border: 1px solid #2a2f3d;
       border-radius: 6px;
       backdrop-filter: blur(6px);
-      z-index: 900;
       overflow: hidden;
     }
-    #sidebar-title {
+    .panel-title {
       padding: 7px 12px;
       font-size: 11px; font-weight: 600;
       letter-spacing: .08em; text-transform: uppercase;
       color: #4b6fa8;
       border-bottom: 1px solid #1e2535;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
+    .panel-title .caret { font-size: 9px; color: #4a5568; }
+    .panel-body { padding: 8px 12px; }
+    .panel-body.collapsed { display: none; }
+
+    /* Players */
     #player-list { padding: 4px 0; }
     .player-item {
       padding: 6px 12px;
@@ -117,6 +150,79 @@
       vertical-align: middle;
     }
 
+    /* Settings sliders */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .setting-row:last-child { margin-bottom: 0; }
+    .setting-label {
+      font-size: 11px;
+      color: #9ca3af;
+      flex-shrink: 0;
+      width: 68px;
+    }
+    .setting-row input[type=range] {
+      flex: 1;
+      accent-color: #4b6fa8;
+      cursor: pointer;
+      height: 4px;
+    }
+    .setting-val {
+      font-size: 10px;
+      color: #6b7280;
+      width: 28px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* Ore filter */
+    #ore-filter-body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px;
+    }
+    .ore-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 7px 3px 5px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-size: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity .15s, border-color .15s;
+    }
+    .ore-chip:hover { border-color: rgba(255,255,255,.3); }
+    .ore-chip.off { opacity: 0.3; }
+    .ore-chip-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ore-filter-actions {
+      display: flex;
+      gap: 6px;
+      padding: 0 8px 8px;
+    }
+    .ore-filter-actions button {
+      flex: 1;
+      padding: 3px 0;
+      font-size: 10px;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #9ca3af;
+      cursor: pointer;
+    }
+    .ore-filter-actions button:hover { background: #222840; color: #c8d0e0; }
+
     /* ── Leaflet layer control dark theme ────────────────────── */
     .leaflet-control-layers {
       background: rgba(13,15,20,.92) !important;
@@ -124,37 +230,10 @@
       border-radius: 6px !important;
       color: #c8d0e0 !important;
     }
-    .leaflet-control-layers-toggle {
-      background-color: #13161f !important;
-    }
+    .leaflet-control-layers-toggle { background-color: #13161f !important; }
     .leaflet-control-layers-list { padding: 4px 8px; }
     .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
     .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
-
-    /* ── Ore legend ──────────────────────────────────────────── */
-    #legend {
-      position: absolute;
-      bottom: 30px; left: 10px;
-      background: rgba(13,15,20,.88);
-      border: 1px solid #2a2f3d;
-      border-radius: 6px;
-      padding: 8px 10px;
-      z-index: 900;
-      font-size: 11px;
-      display: none;       /* shown only when Deposits layer is active */
-    }
-    #legend-title {
-      font-size: 10px; font-weight: 600;
-      letter-spacing: .08em; text-transform: uppercase;
-      color: #4b6fa8; margin-bottom: 5px;
-    }
-    .legend-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
-    .legend-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,.25);
-      flex-shrink: 0;
-    }
   </style>
 </head>
 <body>
@@ -162,6 +241,7 @@
 <div id="header">
   <h1>Icarus Live Map</h1>
   <span id="player-count">– players online</span>
+  <button class="hdr-btn" id="exotic-btn" title="Highlight Exotic deposits">✦ Exotics</button>
   <div id="status">
     <div id="status-dot" class="loading"></div>
     <span id="status-text">connecting…</span>
@@ -171,14 +251,67 @@
 <div id="map"></div>
 <div id="coords"></div>
 
-<div id="sidebar">
-  <div id="sidebar-title">Players</div>
-  <div id="player-list"></div>
-</div>
+<div id="right-panel">
 
-<div id="legend">
-  <div id="legend-title">Ore Types</div>
-  <div id="legend-rows"></div>
+  <!-- Players -->
+  <div class="panel-box">
+    <div class="panel-title" onclick="togglePanel('players')">
+      Players <span class="caret" id="caret-players">▼</span>
+    </div>
+    <div id="player-list" class="panel-body"></div>
+  </div>
+
+  <!-- Ore filter -->
+  <div class="panel-box" id="ore-filter-box" style="display:none">
+    <div class="panel-title" onclick="togglePanel('ore')">
+      Ore Filter <span class="caret" id="caret-ore">▼</span>
+    </div>
+    <div id="ore-filter-wrap">
+      <div id="ore-filter-body"></div>
+      <div class="ore-filter-actions">
+        <button onclick="setAllOres(true)">All</button>
+        <button onclick="setAllOres(false)">None</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel-box">
+    <div class="panel-title" onclick="togglePanel('settings')">
+      Settings <span class="caret" id="caret-settings">▶</span>
+    </div>
+    <div id="settings-body" class="panel-body collapsed">
+      <div class="setting-row">
+        <span class="setting-label">Players</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.85"
+               oninput="setOpacity('player', this.value)"
+               id="opacity-player" />
+        <span class="setting-val" id="val-player">85%</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Geysers</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.75"
+               oninput="setOpacity('geyser', this.value)"
+               id="opacity-geyser" />
+        <span class="setting-val" id="val-geyser">75%</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Caves</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.70"
+               oninput="setOpacity('cave', this.value)"
+               id="opacity-cave" />
+        <span class="setting-val" id="val-cave">70%</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Deposits</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.80"
+               oninput="setOpacity('deposit', this.value)"
+               id="opacity-deposit" />
+        <span class="setting-val" id="val-deposit">80%</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -187,10 +320,10 @@
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
 
-const MAP_IMAGE    = 'map.jpg';
-const MAP_MIN      = -4096;
-const MAP_MAX      =  4096;
-const Y_SIGN       = -1;
+const MAP_IMAGE     = 'map.jpg';
+const MAP_MIN       = -4096;
+const MAP_MAX       =  4096;
+const Y_SIGN        = -1;
 const POLL_INTERVAL = 5000;
 
 const PLAYER_COLOURS = [
@@ -213,6 +346,38 @@ const ORE_COLOR = {
   Stone:     '#966f50',
   Exotic:    '#cc22cc',
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  OPACITY STATE
+// ═══════════════════════════════════════════════════════════════
+
+const opacity = { player: 0.85, geyser: 0.75, cave: 0.70, deposit: 0.80 };
+
+function setOpacity(type, val) {
+  opacity[type] = parseFloat(val);
+  const pct = Math.round(val * 100) + '%';
+  document.getElementById('val-' + type).textContent = pct;
+
+  if (type === 'player') {
+    playerLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.player }));
+  } else if (type === 'geyser') {
+    enzymeLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
+    oilLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
+  } else if (type === 'cave') {
+    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
+  } else if (type === 'deposit') {
+    applyDepositOpacity();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ORE FILTER STATE
+// ═══════════════════════════════════════════════════════════════
+
+const oreVisible = {};   // ore name → boolean
+Object.keys(ORE_COLOR).forEach(o => oreVisible[o] = true);
+
+let exoticHighlight = false;
 
 // ═══════════════════════════════════════════════════════════════
 //  MAP SETUP
@@ -256,9 +421,27 @@ L.control.layers({}, {
   'Deposits':       depositLayer,
 }, { collapsed: true, position: 'topleft' }).addTo(map);
 
-// Show ore legend only while deposits layer is visible
-map.on('overlayadd',    e => { if (e.layer === depositLayer) showLegend(true);  });
-map.on('overlayremove', e => { if (e.layer === depositLayer) showLegend(false); });
+// Show ore filter panel only while deposits layer is active
+map.on('overlayadd',    e => { if (e.layer === depositLayer) document.getElementById('ore-filter-box').style.display = ''; });
+map.on('overlayremove', e => { if (e.layer === depositLayer) document.getElementById('ore-filter-box').style.display = 'none'; });
+
+// ═══════════════════════════════════════════════════════════════
+//  PANEL COLLAPSE
+// ═══════════════════════════════════════════════════════════════
+
+const panelBodies = {
+  players:  'player-list',
+  ore:      'ore-filter-wrap',
+  settings: 'settings-body',
+};
+
+function togglePanel(key) {
+  const el    = document.getElementById(panelBodies[key]);
+  const caret = document.getElementById('caret-' + key);
+  const open  = !el.classList.contains('collapsed');
+  el.classList.toggle('collapsed', open);
+  if (caret) caret.textContent = open ? '▶' : '▼';
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  HELPERS
@@ -267,7 +450,6 @@ map.on('overlayremove', e => { if (e.layer === depositLayer) showLegend(false); 
 function toLatLng(x_m, y_m) { return [y_m * Y_SIGN, x_m]; }
 
 function yawToCompass(yaw) {
-  // UE4 yaw: 0 = East, 90 = North, ±180 = West, -90 = South
   const bearing = ((90 - yaw) % 360 + 360) % 360;
   const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE',
                 'S','SSW','SW','WSW','W','WNW','NW','NNW'];
@@ -281,21 +463,64 @@ function remainingLabel(r) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ORE LEGEND
+//  ORE FILTER CHIPS
 // ═══════════════════════════════════════════════════════════════
 
-(function buildLegend() {
-  const rows = document.getElementById('legend-rows');
+(function buildOreFilter() {
+  const body = document.getElementById('ore-filter-body');
   for (const [ore, color] of Object.entries(ORE_COLOR)) {
-    const row = document.createElement('div');
-    row.className = 'legend-row';
-    row.innerHTML = `<div class="legend-dot" style="background:${color}"></div><span>${ore}</span>`;
-    rows.appendChild(row);
+    const chip = document.createElement('div');
+    chip.className = 'ore-chip';
+    chip.dataset.ore = ore;
+    chip.innerHTML = `<div class="ore-chip-dot" style="background:${color}"></div>${ore}`;
+    chip.addEventListener('click', () => {
+      oreVisible[ore] = !oreVisible[ore];
+      chip.classList.toggle('off', !oreVisible[ore]);
+      applyDepositOpacity();
+    });
+    body.appendChild(chip);
   }
 })();
 
-function showLegend(visible) {
-  document.getElementById('legend').style.display = visible ? 'block' : 'none';
+function setAllOres(val) {
+  Object.keys(oreVisible).forEach(o => oreVisible[o] = val);
+  document.querySelectorAll('.ore-chip').forEach(c => c.classList.toggle('off', !val));
+  applyDepositOpacity();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXOTIC HIGHLIGHT
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('exotic-btn').addEventListener('click', () => {
+  exoticHighlight = !exoticHighlight;
+  document.getElementById('exotic-btn').classList.toggle('active', exoticHighlight);
+  applyDepositOpacity();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  DEPOSIT OPACITY / FILTER / HIGHLIGHT  (applied to cached markers)
+// ═══════════════════════════════════════════════════════════════
+
+// Each deposit marker stores its ore on the options object at draw time
+function applyDepositOpacity() {
+  depositLayer.eachLayer(m => {
+    const ore     = m.options._ore;
+    const isExo   = ore === 'Exotic';
+    const visible = oreVisible[ore] !== false;
+
+    if (exoticHighlight && isExo) {
+      // Highlighted exotic: full opacity, larger, bright stroke
+      m.setStyle({ fillOpacity: 1, opacity: 1, weight: 2,
+                   color: '#ff44ff', radius: 7 });
+    } else if (!visible) {
+      m.setStyle({ fillOpacity: 0, opacity: 0 });
+    } else {
+      m.setStyle({ fillOpacity: opacity.deposit,
+                   opacity: 1, weight: 1,
+                   color: 'rgba(255,255,255,0.3)', radius: 4 });
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -314,23 +539,20 @@ function getColour(id) {
 
 function updatePlayers(players) {
   const online = players.filter(p => p.online);
-
   document.getElementById('player-count').textContent =
     `${online.length} / ${players.length} online`;
 
   const seen = new Set();
-
   online.forEach(p => {
     seen.add(p.steam_id);
     const ll = toLatLng(p.x_m, p.y_m);
-
     if (playerState[p.steam_id]?.marker) {
       playerState[p.steam_id].marker.setLatLng(ll);
     } else {
       const colour = getColour(p.steam_id);
       const marker = L.circleMarker(ll, {
         radius: 7, color: colour, fillColor: colour,
-        fillOpacity: 0.85, weight: 2,
+        fillOpacity: opacity.player, weight: 2,
       }).addTo(playerLayer);
       marker.bindTooltip(p.character_name, {
         permanent: true, direction: 'top',
@@ -341,7 +563,6 @@ function updatePlayers(players) {
     }
   });
 
-  // Remove markers for players who went offline
   for (const id of Object.keys(playerState)) {
     if (!seen.has(id) && playerState[id]?.marker) {
       playerState[id].marker.remove();
@@ -349,7 +570,6 @@ function updatePlayers(players) {
     }
   }
 
-  // Sidebar
   const list = document.getElementById('player-list');
   list.innerHTML = '';
   players.forEach(p => {
@@ -373,7 +593,7 @@ function updatePlayers(players) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  STATIC POI LAYERS  (redrawn only when server version changes)
+//  STATIC POI LAYERS
 // ═══════════════════════════════════════════════════════════════
 
 function drawStaticPOIs(data) {
@@ -382,49 +602,50 @@ function drawStaticPOIs(data) {
   caveLayer.clearLayers();
   depositLayer.clearLayers();
 
-  // ── Enzyme geysers ──
+  // Enzyme geysers
   (data.geysers?.enzyme || []).forEach(g => {
-    const tip = `<b>Enzyme Geyser</b><br>`
-              + `Horde: ${g.horde || '?'}<br>`
-              + `Completions: ${g.completions ?? 0}<br>`
-              + `Active: ${g.active ? 'yes' : 'no'}`;
+    const tip = `<b>Enzyme Geyser</b><br>Horde: ${g.horde || '?'}<br>`
+              + `Completions: ${g.completions ?? 0}<br>Active: ${g.active ? 'yes' : 'no'}`;
     L.circleMarker(toLatLng(g.x_m, g.y_m), {
       radius: 7, color: '#16a34a', fillColor: '#22c55e',
-      fillOpacity: 0.75, weight: 2,
+      fillOpacity: opacity.geyser, weight: 2,
     }).bindTooltip(tip).addTo(enzymeLayer);
   });
 
-  // ── Oil geysers ──
+  // Oil geysers
   (data.geysers?.oil || []).forEach(g => {
-    const tip = `<b>Oil Geyser</b><br>Active: ${g.active ? 'yes' : 'no'}`;
     L.circleMarker(toLatLng(g.x_m, g.y_m), {
       radius: 7, color: '#78350f', fillColor: '#b45309',
-      fillOpacity: 0.75, weight: 2,
-    }).bindTooltip(tip).addTo(oilLayer);
+      fillOpacity: opacity.geyser, weight: 2,
+    }).bindTooltip('<b>Oil Geyser</b><br>Active: ' + (g.active ? 'yes' : 'no'))
+      .addTo(oilLayer);
   });
 
-  // ── Caves ──
+  // Caves
   (data.caves || []).forEach(c => {
-    const facing  = c.yaw != null ? `  •  Facing ${yawToCompass(c.yaw)} (${c.yaw}°)` : '';
-    const mined   = c.fully_mined ? '  •  <b>Mined out</b>' : '';
-    const tip     = `<b>Cave Entrance</b>${mined}${facing}`;
+    const facing = c.yaw != null ? `  •  Facing ${yawToCompass(c.yaw)} (${c.yaw}°)` : '';
+    const mined  = c.fully_mined ? '  •  <b>Mined out</b>' : '';
     L.circleMarker(toLatLng(c.x_m, c.y_m), {
       radius: 5, color: '#9ca3af', fillColor: '#374151',
-      fillOpacity: 0.7, weight: 2,
-    }).bindTooltip(tip).addTo(caveLayer);
+      fillOpacity: opacity.cave, weight: 2,
+    }).bindTooltip(`<b>Cave Entrance</b>${mined}${facing}`).addTo(caveLayer);
   });
 
-  // ── Resource deposits ──
+  // Deposits — store ore on options for filter/highlight access
   (data.deposits || []).forEach(d => {
-    const color   = ORE_COLOR[d.ore] || '#888';
-    const status  = remainingLabel(d.remaining);
-    const catStr  = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
-    const tip     = `<b>${d.ore}</b> [${catStr}]<br>Status: ${status}`;
-    L.circleMarker(toLatLng(d.x_m, d.y_m), {
+    const color  = ORE_COLOR[d.ore] || '#888';
+    const catStr = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
+    const tip    = `<b>${d.ore}</b> [${catStr}]<br>Status: ${remainingLabel(d.remaining)}`;
+    const m = L.circleMarker(toLatLng(d.x_m, d.y_m), {
       radius: 4, color: 'rgba(255,255,255,0.3)', fillColor: color,
-      fillOpacity: 0.8, weight: 1,
-    }).bindTooltip(tip).addTo(depositLayer);
+      fillOpacity: opacity.deposit, weight: 1,
+      _ore: d.ore,   // stored for filter/highlight use
+    }).bindTooltip(tip);
+    m.addTo(depositLayer);
   });
+
+  // Re-apply current filter + highlight state after redraw
+  applyDepositOpacity();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -434,35 +655,24 @@ function drawStaticPOIs(data) {
 let lastVersion = -1;
 
 function setStatus(state, text) {
-  const dot  = document.getElementById('status-dot');
-  const span = document.getElementById('status-text');
-  dot.className = state === 'loading' ? 'loading' : state === 'ok' ? '' : 'stale';
-  span.textContent = text;
+  document.getElementById('status-dot').className =
+    state === 'loading' ? 'loading' : state === 'ok' ? '' : 'stale';
+  document.getElementById('status-text').textContent = text;
 }
 
 function poll() {
   setStatus('loading', 'updating…');
-
   fetch('/api/state?_=' + Date.now())
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(data => {
-      // Redraw static POIs only when the server re-parsed the save file
       if (data.version !== lastVersion) {
         drawStaticPOIs(data);
         lastVersion = data.version;
       }
       updatePlayers(data.players || []);
-
-      const t = new Date().toLocaleTimeString();
-      setStatus('ok', `updated ${t}`);
+      setStatus('ok', `updated ${new Date().toLocaleTimeString()}`);
     })
-    .catch(err => {
-      console.error(err);
-      setStatus('error', 'failed – retrying');
-    });
+    .catch(err => { console.error(err); setStatus('error', 'failed – retrying'); });
 }
 
 poll();
