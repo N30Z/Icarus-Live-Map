@@ -131,7 +131,7 @@
     .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
     .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
 
-    /* ── Ore legend ──────────────────────────────────────────── */
+    /* ── Ore legend / filter ─────────────────────────────────── */
     #legend {
       position: absolute;
       bottom: 30px; left: 10px;
@@ -141,19 +141,100 @@
       padding: 8px 10px;
       z-index: 900;
       font-size: 11px;
-      display: none;       /* shown only when Deposits layer is active */
+      display: none;
     }
     #legend-title {
       font-size: 10px; font-weight: 600;
       letter-spacing: .08em; text-transform: uppercase;
       color: #4b6fa8; margin-bottom: 5px;
     }
-    .legend-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+    .legend-row {
+      display: flex; align-items: center; gap: 6px; margin: 2px 0;
+      cursor: pointer; user-select: none;
+    }
+    .legend-row:hover { color: #fff; }
+    .legend-row.disabled { opacity: .35; }
     .legend-dot {
       width: 10px; height: 10px;
       border-radius: 50%;
       border: 1px solid rgba(255,255,255,.25);
       flex-shrink: 0;
+    }
+    .legend-check {
+      width: 12px; height: 12px;
+      accent-color: #7eb8f7;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    /* ── Settings panel ─────────────────────────────────────── */
+    #settings-panel {
+      position: absolute;
+      top: 88px; left: 100px;
+      width: 220px;
+      background: rgba(13,15,20,.92);
+      border: 1px solid #2a2f3d;
+      border-radius: 6px;
+      backdrop-filter: blur(6px);
+      z-index: 900;
+      overflow: hidden;
+      display: none;
+    }
+    #settings-title {
+      padding: 7px 12px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: #4b6fa8;
+      border-bottom: 1px solid #1e2535;
+    }
+    #settings-body { padding: 8px 12px; }
+    .setting-group { margin-bottom: 8px; }
+    .setting-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px; color: #c8d0e0; margin-bottom: 3px;
+    }
+    .setting-group label span.val { font-size: 10px; color: #6b7280; min-width: 28px; text-align: right; }
+    .setting-group input[type=range] {
+      width: 100%; height: 4px;
+      -webkit-appearance: none; appearance: none;
+      background: #2a2f3d; border-radius: 2px; outline: none;
+    }
+    .setting-group input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px;
+      border-radius: 50%; background: #7eb8f7; cursor: pointer;
+    }
+    #btn-settings {
+      position: absolute;
+      top: 60px; left: 100px;
+      z-index: 901;
+      background: rgba(13,15,20,.92);
+      border: 1px solid #2a2f3d;
+      border-radius: 4px;
+      color: #c8d0e0;
+      font-size: 13px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #btn-settings:hover { background: #1a1f2e; }
+
+    /* ── Highlight Exotics button ───────────────────────────── */
+    #btn-exotics {
+      position: absolute;
+      top: 126px; left: 10px;
+      z-index: 901;
+      background: rgba(13,15,20,.92);
+      border: 1px solid #2a2f3d;
+      border-radius: 4px;
+      color: #cc22cc;
+      font-size: 12px; font-weight: 600;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #btn-exotics:hover { background: #1a1f2e; }
+    #btn-exotics.active {
+      background: #cc22cc;
+      color: #fff;
+      border-color: #cc22cc;
     }
   </style>
 </head>
@@ -177,8 +258,33 @@
 </div>
 
 <div id="legend">
-  <div id="legend-title">Ore Types</div>
+  <div id="legend-title">Ore Filter</div>
   <div id="legend-rows"></div>
+</div>
+
+<button id="btn-settings">Settings</button>
+<button id="btn-exotics">Highlight Exotics</button>
+
+<div id="settings-panel">
+  <div id="settings-title">Settings</div>
+  <div id="settings-body">
+    <div class="setting-group">
+      <label>Players <span class="val" id="opacity-players-val">85%</span></label>
+      <input type="range" min="0" max="100" value="85" id="opacity-players">
+    </div>
+    <div class="setting-group">
+      <label>Deposits <span class="val" id="opacity-deposits-val">80%</span></label>
+      <input type="range" min="0" max="100" value="80" id="opacity-deposits">
+    </div>
+    <div class="setting-group">
+      <label>Caves <span class="val" id="opacity-caves-val">70%</span></label>
+      <input type="range" min="0" max="100" value="70" id="opacity-caves">
+    </div>
+    <div class="setting-group">
+      <label>Geysers <span class="val" id="opacity-geysers-val">75%</span></label>
+      <input type="range" min="0" max="100" value="75" id="opacity-geysers">
+    </div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -281,21 +387,131 @@ function remainingLabel(r) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ORE LEGEND
+//  ORE FILTER (legend with checkboxes)
 // ═══════════════════════════════════════════════════════════════
+
+const oreEnabled = {};
+for (const ore of Object.keys(ORE_COLOR)) oreEnabled[ore] = true;
+
+// Per-ore sub-layers: each ore type gets its own layerGroup inside depositLayer
+const oreSubLayers = {};
+for (const ore of Object.keys(ORE_COLOR)) {
+  oreSubLayers[ore] = L.layerGroup().addTo(depositLayer);
+}
 
 (function buildLegend() {
   const rows = document.getElementById('legend-rows');
   for (const [ore, color] of Object.entries(ORE_COLOR)) {
     const row = document.createElement('div');
     row.className = 'legend-row';
-    row.innerHTML = `<div class="legend-dot" style="background:${color}"></div><span>${ore}</span>`;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true; cb.className = 'legend-check';
+    cb.dataset.ore = ore;
+    cb.addEventListener('change', () => toggleOre(ore, cb.checked));
+    const dot = document.createElement('div');
+    dot.className = 'legend-dot';
+    dot.style.background = color;
+    const span = document.createElement('span');
+    span.textContent = ore;
+    row.appendChild(cb);
+    row.appendChild(dot);
+    row.appendChild(span);
+    // clicking the row toggles the checkbox
+    row.addEventListener('click', e => { if (e.target !== cb) { cb.checked = !cb.checked; toggleOre(ore, cb.checked); } });
     rows.appendChild(row);
   }
 })();
 
+function toggleOre(ore, visible) {
+  oreEnabled[ore] = visible;
+  if (visible) {
+    if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]);
+  } else {
+    depositLayer.removeLayer(oreSubLayers[ore]);
+  }
+  // update legend row styling
+  document.querySelectorAll('.legend-row').forEach(row => {
+    const cb = row.querySelector('.legend-check');
+    if (cb) row.classList.toggle('disabled', !cb.checked);
+  });
+}
+
 function showLegend(visible) {
   document.getElementById('legend').style.display = visible ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS PANEL — opacity sliders
+// ═══════════════════════════════════════════════════════════════
+
+const opacityState = { players: 0.85, deposits: 0.80, caves: 0.70, geysers: 0.75 };
+
+document.getElementById('btn-settings').addEventListener('click', () => {
+  const p = document.getElementById('settings-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+});
+
+['players','deposits','caves','geysers'].forEach(key => {
+  const slider = document.getElementById('opacity-' + key);
+  const valEl  = document.getElementById('opacity-' + key + '-val');
+  slider.addEventListener('input', () => {
+    const v = slider.value / 100;
+    opacityState[key] = v;
+    valEl.textContent = slider.value + '%';
+    applyOpacity(key, v);
+  });
+});
+
+function applyOpacity(category, opacity) {
+  let layer;
+  if (category === 'players')  layer = playerLayer;
+  else if (category === 'deposits') layer = depositLayer;
+  else if (category === 'caves')    layer = caveLayer;
+  else if (category === 'geysers')  { applyOpacityToLayer(enzymeLayer, opacity); applyOpacityToLayer(oilLayer, opacity); return; }
+  if (layer) applyOpacityToLayer(layer, opacity);
+}
+
+function applyOpacityToLayer(layer, opacity) {
+  layer.eachLayer(sub => {
+    if (sub.eachLayer) {
+      // sub-layerGroup (ore sub-layers)
+      sub.eachLayer(m => setMarkerOpacity(m, opacity));
+    } else {
+      setMarkerOpacity(sub, opacity);
+    }
+  });
+}
+
+function setMarkerOpacity(marker, opacity) {
+  // skip exotic-highlighted markers
+  if (marker._exoticHighlight) return;
+  if (marker.setStyle) marker.setStyle({ fillOpacity: opacity, opacity: opacity });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HIGHLIGHT EXOTICS
+// ═══════════════════════════════════════════════════════════════
+
+let exoticHighlightOn = false;
+
+document.getElementById('btn-exotics').addEventListener('click', () => {
+  exoticHighlightOn = !exoticHighlightOn;
+  document.getElementById('btn-exotics').classList.toggle('active', exoticHighlightOn);
+  applyExoticHighlight();
+});
+
+function applyExoticHighlight() {
+  if (!oreSubLayers.Exotic) return;
+  oreSubLayers.Exotic.eachLayer(m => {
+    if (exoticHighlightOn) {
+      m._exoticHighlight = true;
+      m.setStyle({ radius: 8, fillOpacity: 1, opacity: 1, weight: 3, color: '#ff66ff', fillColor: '#cc22cc' });
+      m.bringToFront();
+    } else {
+      m._exoticHighlight = false;
+      m.setStyle({ radius: 4, fillOpacity: opacityState.deposits, opacity: opacityState.deposits, weight: 1, color: 'rgba(255,255,255,0.3)', fillColor: '#cc22cc' });
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -330,7 +546,8 @@ function updatePlayers(players) {
       const colour = getColour(p.steam_id);
       const marker = L.circleMarker(ll, {
         radius: 7, color: colour, fillColor: colour,
-        fillOpacity: 0.85, weight: 2,
+        fillOpacity: opacityState.players, weight: 2,
+        opacity: opacityState.players,
       }).addTo(playerLayer);
       marker.bindTooltip(p.character_name, {
         permanent: true, direction: 'top',
@@ -380,7 +597,8 @@ function drawStaticPOIs(data) {
   enzymeLayer.clearLayers();
   oilLayer.clearLayers();
   caveLayer.clearLayers();
-  depositLayer.clearLayers();
+  // Clear ore sub-layers (not depositLayer itself — it holds the sub-layerGroups)
+  for (const ore of Object.keys(oreSubLayers)) oreSubLayers[ore].clearLayers();
 
   // ── Enzyme geysers ──
   (data.geysers?.enzyme || []).forEach(g => {
@@ -414,17 +632,26 @@ function drawStaticPOIs(data) {
     }).bindTooltip(tip).addTo(caveLayer);
   });
 
-  // ── Resource deposits ──
+  // ── Resource deposits ── (into per-ore sub-layers)
   (data.deposits || []).forEach(d => {
     const color   = ORE_COLOR[d.ore] || '#888';
     const status  = remainingLabel(d.remaining);
     const catStr  = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
     const tip     = `<b>${d.ore}</b> [${catStr}]<br>Status: ${status}`;
+    const sub     = oreSubLayers[d.ore];
+    const target  = sub || depositLayer;
     L.circleMarker(toLatLng(d.x_m, d.y_m), {
       radius: 4, color: 'rgba(255,255,255,0.3)', fillColor: color,
-      fillOpacity: 0.8, weight: 1,
-    }).bindTooltip(tip).addTo(depositLayer);
+      fillOpacity: opacityState.deposits, weight: 1,
+    }).bindTooltip(tip).addTo(target);
   });
+
+  // Apply current opacity to newly drawn layers
+  applyOpacityToLayer(enzymeLayer, opacityState.geysers);
+  applyOpacityToLayer(oilLayer, opacityState.geysers);
+  applyOpacityToLayer(caveLayer, opacityState.caves);
+  // Re-apply exotic highlight if active
+  if (exoticHighlightOn) applyExoticHighlight();
 }
 
 // ═══════════════════════════════════════════════════════════════
