@@ -1,4 +1,12 @@
-__pycache__
+__pycache__/
 *.pyc
 actors.bin
-__pycache__/*
+actors_readable.txt
+
+# Savegame data — user-specific, not for the repo
+GD.json
+players.json
+savegame.json
+
+# Claude Code local settings
+.claude/

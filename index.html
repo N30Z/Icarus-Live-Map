@@ -17,6 +17,63 @@
       flex-direction: column;
     }
 
+    /* ── Upload overlay ──────────────────────────────────────── */
+    #upload-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(13,15,20,.97);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #upload-card {
+      background: #13161f;
+      border: 1px solid #2a2f3d;
+      border-radius: 10px;
+      padding: 36px 40px;
+      width: 420px;
+      max-width: 94vw;
+      text-align: center;
+    }
+    #upload-card h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #7eb8f7;
+      margin-bottom: 8px;
+    }
+    #upload-card p {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+    #upload-card p strong { color: #c8d0e0; }
+    #drop-zone {
+      border: 2px dashed #2a2f3d;
+      border-radius: 8px;
+      padding: 32px 20px;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      margin-bottom: 14px;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: #4b6fa8;
+      background: rgba(75,111,168,.07);
+    }
+    #drop-icon { font-size: 28px; margin-bottom: 8px; }
+    #drop-label { font-size: 14px; color: #c8d0e0; margin-bottom: 4px; }
+    #drop-hint { font-size: 11px; color: #4a5568; }
+    #file-input { display: none; }
+    #parse-status {
+      font-size: 12px;
+      color: #6b7280;
+      min-height: 18px;
+      margin-top: 6px;
+    }
+    #parse-status.err { color: #ef4444; }
+
     /* ── Header ─────────────────────────────────────────────── */
     #header {
       display: flex;
@@ -37,7 +94,6 @@
     }
     #player-count { font-size: 12px; color: #6b7280; }
 
-    /* ── Header buttons ──────────────────────────────────────── */
     .hdr-btn {
       padding: 4px 10px;
       font-size: 11px;
@@ -64,10 +120,11 @@
     #status-dot {
       width: 7px; height: 7px;
       border-radius: 50%;
-      background: #22c55e;
+      background: #4a5568;
       transition: background .3s;
     }
-    #status-dot.stale   { background: #ef4444; }
+    #status-dot.ok     { background: #22c55e; }
+    #status-dot.err    { background: #ef4444; }
     #status-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
@@ -98,7 +155,7 @@
       z-index: 999; pointer-events: none;
     }
 
-    /* ── Right panel (players + settings) ───────────────────── */
+    /* ── Right panel ─────────────────────────────────────────── */
     #right-panel {
       position: absolute;
       top: 48px; right: 10px;
@@ -132,7 +189,6 @@
     .panel-body { padding: 8px 12px; }
     .panel-body.collapsed { display: none; }
 
-    /* Players */
     #player-list { padding: 4px 0; }
     .player-item {
       padding: 6px 12px;
@@ -150,7 +206,6 @@
       vertical-align: middle;
     }
 
-    /* Settings sliders */
     .setting-row {
       display: flex;
       align-items: center;
@@ -159,27 +214,10 @@
       margin-bottom: 8px;
     }
     .setting-row:last-child { margin-bottom: 0; }
-    .setting-label {
-      font-size: 11px;
-      color: #9ca3af;
-      flex-shrink: 0;
-      width: 68px;
-    }
-    .setting-row input[type=range] {
-      flex: 1;
-      accent-color: #4b6fa8;
-      cursor: pointer;
-      height: 4px;
-    }
-    .setting-val {
-      font-size: 10px;
-      color: #6b7280;
-      width: 28px;
-      text-align: right;
-      flex-shrink: 0;
-    }
+    .setting-label { font-size: 11px; color: #9ca3af; flex-shrink: 0; width: 68px; }
+    .setting-row input[type=range] { flex: 1; accent-color: #4b6fa8; cursor: pointer; height: 4px; }
+    .setting-val { font-size: 10px; color: #6b7280; width: 28px; text-align: right; flex-shrink: 0; }
 
-    /* Ore filter */
     #ore-filter-body {
       display: flex;
       flex-wrap: wrap;
@@ -201,11 +239,7 @@
     }
     .ore-chip:hover { border-color: rgba(255,255,255,.3); }
     .ore-chip.off { opacity: 0.3; }
-    .ore-chip-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    .ore-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .ore-filter-actions {
       display: flex;
       gap: 6px;
@@ -223,7 +257,6 @@
     }
     .ore-filter-actions button:hover { background: #222840; color: #c8d0e0; }
 
-    /* ── Leaflet layer control dark theme ────────────────────── */
     .leaflet-control-layers {
       background: rgba(13,15,20,.92) !important;
       border: 1px solid #2a2f3d !important;
@@ -235,7 +268,6 @@
     .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
     .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
 
-    /* ── Ore legend / filter ─────────────────────────────────── */
     #legend {
       position: absolute;
       bottom: 30px; left: 10px;
@@ -258,99 +290,36 @@
     }
     .legend-row:hover { color: #fff; }
     .legend-row.disabled { opacity: .35; }
-    .legend-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,.25);
-      flex-shrink: 0;
-    }
-    .legend-check {
-      width: 12px; height: 12px;
-      accent-color: #7eb8f7;
-      margin: 0;
-      cursor: pointer;
-    }
-
-    /* ── Settings panel ─────────────────────────────────────── */
-    #settings-panel {
-      position: absolute;
-      top: 88px; left: 100px;
-      width: 220px;
-      background: rgba(13,15,20,.92);
-      border: 1px solid #2a2f3d;
-      border-radius: 6px;
-      backdrop-filter: blur(6px);
-      z-index: 900;
-      overflow: hidden;
-      display: none;
-    }
-    #settings-title {
-      padding: 7px 12px;
-      font-size: 11px; font-weight: 600;
-      letter-spacing: .08em; text-transform: uppercase;
-      color: #4b6fa8;
-      border-bottom: 1px solid #1e2535;
-    }
-    #settings-body { padding: 8px 12px; }
-    .setting-group { margin-bottom: 8px; }
-    .setting-group label {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 12px; color: #c8d0e0; margin-bottom: 3px;
-    }
-    .setting-group label span.val { font-size: 10px; color: #6b7280; min-width: 28px; text-align: right; }
-    .setting-group input[type=range] {
-      width: 100%; height: 4px;
-      -webkit-appearance: none; appearance: none;
-      background: #2a2f3d; border-radius: 2px; outline: none;
-    }
-    .setting-group input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 12px; height: 12px;
-      border-radius: 50%; background: #7eb8f7; cursor: pointer;
-    }
-    #btn-settings {
-      position: absolute;
-      top: 60px; left: 100px;
-      z-index: 901;
-      background: rgba(13,15,20,.92);
-      border: 1px solid #2a2f3d;
-      border-radius: 4px;
-      color: #c8d0e0;
-      font-size: 13px;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    #btn-settings:hover { background: #1a1f2e; }
-
-    /* ── Highlight Exotics button ───────────────────────────── */
-    #btn-exotics {
-      position: absolute;
-      top: 126px; left: 10px;
-      z-index: 901;
-      background: rgba(13,15,20,.92);
-      border: 1px solid #2a2f3d;
-      border-radius: 4px;
-      color: #cc22cc;
-      font-size: 12px; font-weight: 600;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    #btn-exotics:hover { background: #1a1f2e; }
-    #btn-exotics.active {
-      background: #cc22cc;
-      color: #fff;
-      border-color: #cc22cc;
-    }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25); flex-shrink: 0; }
+    .legend-check { width: 12px; height: 12px; accent-color: #7eb8f7; margin: 0; cursor: pointer; }
   </style>
 </head>
 <body>
 
+<!-- ── Upload overlay ─────────────────────────────────────────── -->
+<div id="upload-overlay">
+  <div id="upload-card">
+    <h1>Icarus Live Map</h1>
+    <p>Upload your <strong>GD.json</strong> savegame file.<br>Everything runs in your browser — nothing is sent to a server.</p>
+    <div id="drop-zone">
+      <div id="drop-icon">⬆</div>
+      <div id="drop-label">Drop file here or click to browse</div>
+      <div id="drop-hint">GD.json from your Icarus dedicated server</div>
+    </div>
+    <input type="file" id="file-input" accept=".json" />
+    <div id="parse-status"></div>
+  </div>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
 <div id="header">
   <h1>Icarus Live Map</h1>
-  <span id="player-count">– players online</span>
-  <button class="hdr-btn" id="exotic-btn" title="Highlight Exotic deposits">✦ Exotics</button>
+  <span id="player-count">– players</span>
+  <button class="hdr-btn" id="exotic-btn">✦ Exotics</button>
+  <button class="hdr-btn" id="load-btn" onclick="showUpload()">⬆ Load File</button>
   <div id="status">
     <div id="status-dot" class="loading"></div>
-    <span id="status-text">connecting…</span>
+    <span id="status-text">No file loaded</span>
   </div>
 </div>
 
@@ -358,7 +327,6 @@
 <div id="coords"></div>
 
 <div id="right-panel">
-
   <!-- Players -->
   <div class="panel-box">
     <div class="panel-title" onclick="togglePanel('players')">
@@ -390,62 +358,34 @@
       <div class="setting-row">
         <span class="setting-label">Players</span>
         <input type="range" min="0" max="1" step="0.05" value="0.85"
-               oninput="setOpacity('player', this.value)"
-               id="opacity-player" />
+               oninput="setOpacity('player', this.value)" id="opacity-player" />
         <span class="setting-val" id="val-player">85%</span>
       </div>
       <div class="setting-row">
         <span class="setting-label">Geysers</span>
         <input type="range" min="0" max="1" step="0.05" value="0.75"
-               oninput="setOpacity('geyser', this.value)"
-               id="opacity-geyser" />
+               oninput="setOpacity('geyser', this.value)" id="opacity-geyser" />
         <span class="setting-val" id="val-geyser">75%</span>
       </div>
       <div class="setting-row">
         <span class="setting-label">Caves</span>
         <input type="range" min="0" max="1" step="0.05" value="0.70"
-               oninput="setOpacity('cave', this.value)"
-               id="opacity-cave" />
+               oninput="setOpacity('cave', this.value)" id="opacity-cave" />
         <span class="setting-val" id="val-cave">70%</span>
       </div>
       <div class="setting-row">
         <span class="setting-label">Deposits</span>
         <input type="range" min="0" max="1" step="0.05" value="0.80"
-               oninput="setOpacity('deposit', this.value)"
-               id="opacity-deposit" />
+               oninput="setOpacity('deposit', this.value)" id="opacity-deposit" />
         <span class="setting-val" id="val-deposit">80%</span>
       </div>
     </div>
   </div>
+</div>
 
 <div id="legend">
   <div id="legend-title">Ore Filter</div>
   <div id="legend-rows"></div>
-</div>
-
-<button id="btn-settings">Settings</button>
-<button id="btn-exotics">Highlight Exotics</button>
-
-<div id="settings-panel">
-  <div id="settings-title">Settings</div>
-  <div id="settings-body">
-    <div class="setting-group">
-      <label>Players <span class="val" id="opacity-players-val">85%</span></label>
-      <input type="range" min="0" max="100" value="85" id="opacity-players">
-    </div>
-    <div class="setting-group">
-      <label>Deposits <span class="val" id="opacity-deposits-val">80%</span></label>
-      <input type="range" min="0" max="100" value="80" id="opacity-deposits">
-    </div>
-    <div class="setting-group">
-      <label>Caves <span class="val" id="opacity-caves-val">70%</span></label>
-      <input type="range" min="0" max="100" value="70" id="opacity-caves">
-    </div>
-    <div class="setting-group">
-      <label>Geysers <span class="val" id="opacity-geysers-val">75%</span></label>
-      <input type="range" min="0" max="100" value="75" id="opacity-geysers">
-    </div>
-  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -458,28 +398,384 @@ const MAP_IMAGE     = 'map.jpg';
 const MAP_MIN       = -4096;
 const MAP_MAX       =  4096;
 const Y_SIGN        = -1;
-const POLL_INTERVAL = 5000;
 
 const PLAYER_COLOURS = [
-  '#60a5fa', '#34d399', '#f87171', '#fbbf24',
-  '#a78bfa', '#fb923c', '#38bdf8', '#4ade80',
+  '#60a5fa','#34d399','#f87171','#fbbf24',
+  '#a78bfa','#fb923c','#38bdf8','#4ade80',
 ];
 
 const ORE_COLOR = {
-  Iron:      '#a0a0a0',
-  Coal:      '#6b6b6b',
-  Copper:    '#cd7f32',
-  Gold:      '#ffd700',
-  Platinum:  '#d0d0d0',
-  Titanium:  '#4a9ece',
-  Aluminium: '#7fb8d8',
-  Silicon:   '#8899bb',
-  Oxite:     '#00d4ff',
-  Sulfur:    '#d4d400',
-  Salt:      '#f0eee8',
-  Stone:     '#966f50',
-  Exotic:    '#cc22cc',
+  Iron:'#a0a0a0', Coal:'#6b6b6b', Copper:'#cd7f32', Gold:'#ffd700',
+  Platinum:'#d0d0d0', Titanium:'#4a9ece', Aluminium:'#7fb8d8',
+  Silicon:'#8899bb', Oxite:'#00d4ff', Sulfur:'#d4d400',
+  Salt:'#f0eee8', Stone:'#966f50', Exotic:'#cc22cc',
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  BINARY PARSER  (ports parse_players.py / server.py to JS)
+// ═══════════════════════════════════════════════════════════════
+
+function strToBytes(s) { return new TextEncoder().encode(s); }
+
+function readInt32(buf, pos) {
+  return (buf[pos]) | (buf[pos+1] << 8) | (buf[pos+2] << 16) | (buf[pos+3] << 24);
+}
+
+const _f32arr = new Float32Array(1);
+const _i32arr = new Int32Array(_f32arr.buffer);
+function readFloat32(buf, pos) {
+  _i32arr[0] = readInt32(buf, pos);
+  return _f32arr[0];
+}
+
+function readFString(buf, pos) {
+  const len = readInt32(buf, pos); pos += 4;
+  if (len === 0) return { val: '', end: pos };
+  if (len < 0) {
+    const bl = -len * 2;
+    const val = new TextDecoder('utf-16le').decode(buf.subarray(pos, pos + bl)).replace(/\0+$/, '');
+    return { val, end: pos + bl };
+  }
+  const val = new TextDecoder('latin1').decode(buf.subarray(pos, pos + len - 1));
+  return { val, end: pos + len };
+}
+
+function findFirst(buf, pat, start, end) {
+  const lim = Math.min(end !== undefined ? end : buf.length, buf.length) - pat.length;
+  const p0 = pat[0];
+  for (let i = Math.max(0, start); i <= lim; i++) {
+    if (buf[i] !== p0) continue;
+    let ok = true;
+    for (let j = 1; j < pat.length; j++) { if (buf[i+j] !== pat[j]) { ok = false; break; } }
+    if (ok) return i;
+  }
+  return -1;
+}
+
+function findLast(buf, pat, start, end) {
+  const plen = pat.length;
+  for (let i = Math.min(end, buf.length) - plen; i >= start; i--) {
+    let ok = true;
+    for (let j = 0; j < plen; j++) { if (buf[i+j] !== pat[j]) { ok = false; break; } }
+    if (ok) return i;
+  }
+  return -1;
+}
+
+function findAll(buf, pat) {
+  const results = [];
+  let i = 0;
+  while (true) {
+    i = findFirst(buf, pat, i, buf.length);
+    if (i === -1) break;
+    results.push(i);
+    i += pat.length;
+  }
+  return results;
+}
+
+// Read property value. pos = right after the name FString null byte.
+// Mirrors Python _read_prop_val().
+function readPropVal(buf, pos, ptype) {
+  try {
+    const tl = readInt32(buf, pos); pos += 4;
+    pos += tl;       // skip type-name FString body
+    pos += 4;        // payload_size
+    pos += 4;        // array_index
+    if (ptype === 'bool') return buf[pos] !== 0;
+    const hg = buf[pos]; pos++;
+    if (hg) pos += 16;
+    if (ptype === 'str' || ptype === 'name') {
+      const vl = readInt32(buf, pos); pos += 4;
+      if (vl > 0 && vl < 500)
+        return new TextDecoder('latin1').decode(buf.subarray(pos, pos + vl - 1));
+    } else if (ptype === 'float') {
+      return readFloat32(buf, pos);
+    } else if (ptype === 'int') {
+      return readInt32(buf, pos);
+    }
+  } catch(e) {}
+  return null;
+}
+
+function scanProp(buf, pat, start, end, ptype) {
+  const pos = findFirst(buf, pat, start, end);
+  if (pos === -1) return null;
+  return readPropVal(buf, pos + pat.length, ptype);
+}
+
+function rscanProp(buf, pat, before, lookback, ptype) {
+  const pos = findLast(buf, pat, Math.max(0, before - lookback), before);
+  if (pos === -1) return null;
+  return readPropVal(buf, pos + pat.length, ptype);
+}
+
+// Mirrors Python _scan_translation()
+const PAT_TRANS = strToBytes('Translation\x00');
+function scanTranslation(buf, start, end) {
+  const pos = findFirst(buf, PAT_TRANS, start, end);
+  if (pos === -1) return null;
+  try {
+    let p = pos + 12;                        // skip 'Translation\x00'
+    const tl = readInt32(buf, p); p += 4 + tl; // skip type FString
+    const sz = readInt32(buf, p); p += 4;
+    p += 4;                                  // array_index
+    const tl2 = readInt32(buf, p); p += 4 + tl2; // skip struct_name
+    p += 16;                                 // StructGuid
+    const hg = buf[p]; p++;
+    if (hg) p += 16;
+    if (sz === 12) {
+      return [
+        Math.round(readFloat32(buf, p)     / 10) / 10,
+        Math.round(readFloat32(buf, p + 4) / 10) / 10,
+        Math.round(readFloat32(buf, p + 8) / 10) / 10,
+      ];
+    }
+  } catch(e) {}
+  return null;
+}
+
+// Mirrors Python _scan_rotation_yaw()
+const PAT_ROT = strToBytes('Rotation\x00');
+function scanRotationYaw(buf, start, end) {
+  const pos = findFirst(buf, PAT_ROT, start, end);
+  if (pos === -1) return null;
+  try {
+    let p = pos + 9;
+    const tl = readInt32(buf, p); p += 4 + tl;
+    const sz = readInt32(buf, p); p += 4;
+    p += 4;
+    const tl2 = readInt32(buf, p); p += 4 + tl2;
+    p += 16;
+    const hg = buf[p]; p++;
+    if (hg) p += 16;
+    if (sz === 16) {
+      const rx = readFloat32(buf, p), ry = readFloat32(buf, p+4),
+            rz = readFloat32(buf, p+8), rw = readFloat32(buf, p+12);
+      return Math.round(Math.atan2(2*(rw*rz+rx*ry), 1-2*(ry*ry+rz*rz)) * 1800 / Math.PI) / 10;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ── Pattern constants ────────────────────────────────────────────
+const PAT_CCN       = strToBytes('CachedCharacterName\x00');
+const PAT_USERID    = strToBytes('UserID\x00');
+const PAT_CHRSLOT   = strToBytes('ChrSlot\x00');
+const PAT_PCID      = strToBytes('PlayerCharacterID\x00');
+const PAT_PSRC      = strToBytes('PlayerStateRecorderComponent');
+const PAT_PLAYERID  = strToBytes('PlayerID\x00');
+const PAT_LOCATION  = strToBytes('Location\x00');
+const PAT_RDRC      = strToBytes('ResourceDepositRecorderComponent\x00');
+const PAT_ACN       = strToBytes('ActorClassName\x00');
+const PAT_COMPNAME  = strToBytes('ComponentClassName\x00');
+const PAT_BINDATA   = strToBytes('BinaryData\x00');
+const PAT_RDK       = strToBytes('ResourceDTKey\x00');
+const PAT_RR        = strToBytes('ResourceRemaining\x00');
+const PAT_CERC      = strToBytes('CaveEntranceRecorderComponent\x00');
+const PAT_MINED     = strToBytes('bIsVoxelFullyMined\x00');
+const PAT_EGRC      = strToBytes('EnzymeGeyserRecorderComponent\x00');
+const PAT_OGRC      = strToBytes('OilGeyserRecorderComponent\x00');
+const PAT_ACTIVE    = strToBytes('bDeviceActive\x00');
+const PAT_COMPL     = strToBytes('Completions\x00');
+const PAT_HORDE     = strToBytes('HordeDTKey\x00');
+
+// Mirrors Python extract_players_compat()
+function extractPlayers(buf) {
+  // Build (steamId:slot) → characterName map
+  const nameMap = new Map();
+  for (const cnPos of findAll(buf, PAT_CCN)) {
+    const charName = readPropVal(buf, cnPos + PAT_CCN.length, 'str');
+    if (!charName) continue;
+    const uidPos = findLast(buf, PAT_USERID, Math.max(0, cnPos - 600), cnPos);
+    if (uidPos === -1) continue;
+    const steamId = readPropVal(buf, uidPos + PAT_USERID.length, 'str');
+    if (!steamId) continue;
+    let slot = 0;
+    const slotPos = findFirst(buf, PAT_CHRSLOT, uidPos, cnPos);
+    if (slotPos !== -1) { const sv = readPropVal(buf, slotPos + PAT_CHRSLOT.length, 'int'); if (sv !== null) slot = sv; }
+    nameMap.set(`${steamId}:${slot}`, charName);
+    if (!nameMap.has(`${steamId}:_`)) nameMap.set(`${steamId}:_`, charName); // fallback
+  }
+
+  const players = [], seen = new Set();
+
+  for (const pcidPos of findAll(buf, PAT_PCID)) {
+    const fsStart = pcidPos - 4;
+    if (fsStart < 0) continue;
+    if (readInt32(buf, fsStart) !== 18) continue; // 'PlayerCharacterID\0' = 18 bytes
+    if (findFirst(buf, PAT_PSRC, Math.max(0, pcidPos - 5000), pcidPos) === -1) continue;
+
+    try {
+      let p = fsStart;
+      const nr = readFString(buf, p); p = nr.end;
+      const tr = readFString(buf, p); p = tr.end;
+      const size = readInt32(buf, p); p += 4;
+      p += 4;                                    // array_index
+      const snr = readFString(buf, p); p = snr.end;
+      p += 16;                                   // StructGuid
+      const hg = buf[p]; p++;
+      if (hg) p += 16;
+
+      const endStruct = p + size;
+
+      const pidPos = findFirst(buf, PAT_PLAYERID, p, endStruct);
+      const steamId = pidPos !== -1 ? readPropVal(buf, pidPos + PAT_PLAYERID.length, 'str') : null;
+      if (!steamId || seen.has(steamId)) continue;
+      seen.add(steamId);
+
+      let slot = 0;
+      const slotPos = findFirst(buf, PAT_CHRSLOT, p, endStruct);
+      if (slotPos !== -1) { const sv = readPropVal(buf, slotPos + PAT_CHRSLOT.length, 'int'); if (sv !== null) slot = sv; }
+
+      let location = null;
+      const locPos = findFirst(buf, PAT_LOCATION, endStruct, endStruct + 3000);
+      if (locPos !== -1) {
+        try {
+          let lp = locPos - 4;
+          const lnr = readFString(buf, lp); lp = lnr.end;
+          const ltr = readFString(buf, lp); lp = ltr.end;
+          const lsz = readInt32(buf, lp); lp += 4; lp += 4;
+          const lsnr = readFString(buf, lp); lp = lsnr.end;
+          lp += 16; const lhg = buf[lp]; lp++;
+          if (lhg) lp += 16;
+          if (lnr.val === 'Location' && ltr.val === 'StructProperty' && lsnr.val === 'Vector' && lsz === 12) {
+            location = { x: readFloat32(buf, lp), y: readFloat32(buf, lp+4), z: readFloat32(buf, lp+8) };
+          }
+        } catch(e) {}
+      }
+
+      const charName = nameMap.get(`${steamId}:${slot}`) || nameMap.get(`${steamId}:_`) || '<unknown>';
+      const entry = { steam_id: steamId, character_name: charName, slot, online: location !== null };
+      if (location) {
+        entry.x_m = Math.round(location.x) / 100;
+        entry.y_m = Math.round(location.y) / 100;
+        entry.z_m = Math.round(location.z) / 100;
+      }
+      players.push(entry);
+    } catch(e) {}
+  }
+
+  return players;
+}
+
+// Mirrors Python extract_deposits_scan()
+function extractDeposits(buf) {
+  const deposits = [];
+  let i = 0;
+  while (true) {
+    i = findFirst(buf, PAT_RDRC, i, buf.length);
+    if (i === -1) break;
+
+    const actorClass = rscanProp(buf, PAT_ACN, i, 700, 'name');
+    let end = findFirst(buf, PAT_COMPNAME, i + PAT_RDRC.length, i + 8000);
+    if (end === -1) end = i + 6000;
+
+    const bdPos = findFirst(buf, PAT_BINDATA, i, i + 500);
+    if (bdPos !== -1) {
+      const ore  = scanProp(buf, PAT_RDK, bdPos, end, 'name');
+      const rrRaw = scanProp(buf, PAT_RR, bdPos, end, 'float');
+      const loc  = scanTranslation(buf, bdPos, end);
+      const remaining = (rrRaw !== null && !isNaN(rrRaw)) ? Math.round(rrRaw * 10000) / 10000 : null;
+
+      let category = 'surface';
+      if (actorClass === 'BP_Deep_Mining_Ore_Deposit_Cave_C') category = 'cave';
+      else if (actorClass === 'BP_MetaDeposit_Conifer_C' || actorClass === 'BP_Mission_Meta_Voxel_C') category = 'meta';
+
+      if (loc && ore) deposits.push({ ore, remaining, category, x_m: loc[0], y_m: loc[1], z_m: loc[2] });
+    }
+    i += PAT_RDRC.length;
+  }
+  return deposits;
+}
+
+// Mirrors Python extract_caves_scan()
+function extractCaves(buf) {
+  const caves = [];
+  let i = 0;
+  while (true) {
+    i = findFirst(buf, PAT_CERC, i, buf.length);
+    if (i === -1) break;
+
+    const actorClass = rscanProp(buf, PAT_ACN, i, 700, 'name');
+    let end = findFirst(buf, PAT_COMPNAME, i + PAT_CERC.length, i + 15000);
+    if (end === -1) end = i + 12000;
+
+    const bdPos = findFirst(buf, PAT_BINDATA, i, i + 500);
+    if (bdPos !== -1) {
+      const loc  = scanTranslation(buf, bdPos, end);
+      const yaw  = scanRotationYaw(buf, bdPos, end);
+      const mined = scanProp(buf, PAT_MINED, bdPos, end, 'bool');
+      if (loc) caves.push({ x_m: loc[0], y_m: loc[1], z_m: loc[2], yaw, actor_class: actorClass, fully_mined: !!mined });
+    }
+    i += PAT_CERC.length;
+  }
+  return caves;
+}
+
+// Binary scan equivalent of Python extract_geysers()
+function extractGeysers(buf) {
+  function scan(pat, gtype) {
+    const result = [];
+    let i = 0;
+    while (true) {
+      i = findFirst(buf, pat, i, buf.length);
+      if (i === -1) break;
+
+      let end = findFirst(buf, PAT_COMPNAME, i + pat.length, i + 10000);
+      if (end === -1) end = i + 8000;
+
+      const bdPos = findFirst(buf, PAT_BINDATA, i, i + 500);
+      if (bdPos !== -1) {
+        const loc    = scanTranslation(buf, bdPos, end);
+        const active = scanProp(buf, PAT_ACTIVE, bdPos, end, 'bool');
+        if (loc) {
+          const item = { x_m: loc[0], y_m: loc[1], z_m: loc[2], active: !!active };
+          if (gtype === 'enzyme') {
+            item.completions = scanProp(buf, PAT_COMPL, bdPos, end, 'int') || 0;
+            item.horde = scanProp(buf, PAT_HORDE, bdPos, end, 'name') || '';
+          }
+          result.push(item);
+        }
+      }
+      i += pat.length;
+    }
+    return result;
+  }
+  return { enzyme: scan(PAT_EGRC, 'enzyme'), oil: scan(PAT_OGRC, 'oil') };
+}
+
+// Decompress GD.json and extract all map data
+async function parseGDJson(file) {
+  const text = await file.text();
+  const json = JSON.parse(text);
+  const blobB64 = json?.ProspectBlob?.BinaryBlob;
+  if (!blobB64) throw new Error('File does not contain ProspectBlob.BinaryBlob — is this a GD.json?');
+
+  // Base64 → Uint8Array
+  const raw = atob(blobB64);
+  const compressed = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) compressed[i] = raw.charCodeAt(i);
+
+  // zlib decompress (browser-native, RFC 1950)
+  const ds = new DecompressionStream('deflate');
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.write(compressed);
+  writer.close();
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+  const binary = new Uint8Array(totalLen);
+  let off = 0;
+  for (const c of chunks) { binary.set(c, off); off += c.length; }
+
+  return binary;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  OPACITY STATE
@@ -489,29 +785,29 @@ const opacity = { player: 0.85, geyser: 0.75, cave: 0.70, deposit: 0.80 };
 
 function setOpacity(type, val) {
   opacity[type] = parseFloat(val);
-  const pct = Math.round(val * 100) + '%';
-  document.getElementById('val-' + type).textContent = pct;
-
-  if (type === 'player') {
-    playerLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.player }));
-  } else if (type === 'geyser') {
+  document.getElementById('val-' + type).textContent = Math.round(val * 100) + '%';
+  if (type === 'player')  playerLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.player, opacity: opacity.player }));
+  else if (type === 'geyser') {
     enzymeLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
     oilLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
-  } else if (type === 'cave') {
-    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
-  } else if (type === 'deposit') {
-    applyDepositOpacity();
-  }
+  } else if (type === 'cave')    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
+  else if (type === 'deposit')   applyDepositOpacity();
+}
+
+function applyDepositOpacity() {
+  Object.values(oreSubLayers).forEach(sub =>
+    sub.eachLayer(m => { if (!m._exoticHL) m.setStyle({ fillOpacity: opacity.deposit, opacity: opacity.deposit }); })
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  ORE FILTER STATE
 // ═══════════════════════════════════════════════════════════════
 
-const oreVisible = {};   // ore name → boolean
-Object.keys(ORE_COLOR).forEach(o => oreVisible[o] = true);
+const oreEnabled = {};
+Object.keys(ORE_COLOR).forEach(o => oreEnabled[o] = true);
 
-let exoticHighlight = false;
+let exoticHighlightOn = false;
 
 // ═══════════════════════════════════════════════════════════════
 //  MAP SETUP
@@ -524,7 +820,7 @@ const map = L.map('map', {
   minZoom: -4, maxZoom: 5,
   zoomSnap: 0.5, zoomDelta: 0.5,
   zoomControl: false,
-  maxBounds: [[MAP_MIN * 1.1, MAP_MIN * 1.1], [MAP_MAX * 1.1, MAP_MAX * 1.1]],
+  maxBounds: [[MAP_MIN*1.1, MAP_MIN*1.1],[MAP_MAX*1.1, MAP_MAX*1.1]],
   maxBoundsViscosity: 0.8,
 });
 
@@ -533,8 +829,7 @@ L.imageOverlay(MAP_IMAGE, bounds, { errorOverlayUrl: '' }).addTo(map);
 map.fitBounds(bounds);
 
 map.on('mousemove', e => {
-  const x = e.latlng.lng.toFixed(0);
-  const y = (e.latlng.lat * Y_SIGN).toFixed(0);
+  const x = e.latlng.lng.toFixed(0), y = (e.latlng.lat * Y_SIGN).toFixed(0);
   document.getElementById('coords').textContent = `X ${x} m   Y ${y} m`;
 });
 
@@ -546,7 +841,7 @@ const playerLayer  = L.layerGroup().addTo(map);
 const enzymeLayer  = L.layerGroup().addTo(map);
 const oilLayer     = L.layerGroup().addTo(map);
 const caveLayer    = L.layerGroup().addTo(map);
-const depositLayer = L.layerGroup();   // off by default
+const depositLayer = L.layerGroup();
 
 L.control.layers({}, {
   'Enzyme Geysers': enzymeLayer,
@@ -555,7 +850,6 @@ L.control.layers({}, {
   'Deposits':       depositLayer,
 }, { collapsed: true, position: 'topleft' }).addTo(map);
 
-// Show ore filter panel only while deposits layer is active
 map.on('overlayadd',    e => { if (e.layer === depositLayer) document.getElementById('ore-filter-box').style.display = ''; });
 map.on('overlayremove', e => { if (e.layer === depositLayer) document.getElementById('ore-filter-box').style.display = 'none'; });
 
@@ -563,16 +857,11 @@ map.on('overlayremove', e => { if (e.layer === depositLayer) document.getElement
 //  PANEL COLLAPSE
 // ═══════════════════════════════════════════════════════════════
 
-const panelBodies = {
-  players:  'player-list',
-  ore:      'ore-filter-wrap',
-  settings: 'settings-body',
-};
-
+const panelBodies = { players: 'player-list', ore: 'ore-filter-wrap', settings: 'settings-body' };
 function togglePanel(key) {
-  const el    = document.getElementById(panelBodies[key]);
+  const el = document.getElementById(panelBodies[key]);
   const caret = document.getElementById('caret-' + key);
-  const open  = !el.classList.contains('collapsed');
+  const open = !el.classList.contains('collapsed');
   el.classList.toggle('collapsed', open);
   if (caret) caret.textContent = open ? '▶' : '▼';
 }
@@ -585,8 +874,7 @@ function toLatLng(x_m, y_m) { return [y_m * Y_SIGN, x_m]; }
 
 function yawToCompass(yaw) {
   const bearing = ((90 - yaw) % 360 + 360) % 360;
-  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE',
-                'S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
   return dirs[Math.round(bearing / 22.5) % 16];
 }
 
@@ -597,17 +885,11 @@ function remainingLabel(r) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ORE FILTER (legend with checkboxes)
+//  ORE FILTER / LEGEND
 // ═══════════════════════════════════════════════════════════════
 
-const oreEnabled = {};
-for (const ore of Object.keys(ORE_COLOR)) oreEnabled[ore] = true;
-
-// Per-ore sub-layers: each ore type gets its own layerGroup inside depositLayer
 const oreSubLayers = {};
-for (const ore of Object.keys(ORE_COLOR)) {
-  oreSubLayers[ore] = L.layerGroup().addTo(depositLayer);
-}
+for (const ore of Object.keys(ORE_COLOR)) oreSubLayers[ore] = L.layerGroup().addTo(depositLayer);
 
 (function buildLegend() {
   const rows = document.getElementById('legend-rows');
@@ -615,18 +897,12 @@ for (const ore of Object.keys(ORE_COLOR)) {
     const row = document.createElement('div');
     row.className = 'legend-row';
     const cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = true; cb.className = 'legend-check';
-    cb.dataset.ore = ore;
+    cb.type = 'checkbox'; cb.checked = true; cb.className = 'legend-check'; cb.dataset.ore = ore;
     cb.addEventListener('change', () => toggleOre(ore, cb.checked));
     const dot = document.createElement('div');
-    dot.className = 'legend-dot';
-    dot.style.background = color;
-    const span = document.createElement('span');
-    span.textContent = ore;
-    row.appendChild(cb);
-    row.appendChild(dot);
-    row.appendChild(span);
-    // clicking the row toggles the checkbox
+    dot.className = 'legend-dot'; dot.style.background = color;
+    const span = document.createElement('span'); span.textContent = ore;
+    row.appendChild(cb); row.appendChild(dot); row.appendChild(span);
     row.addEventListener('click', e => { if (e.target !== cb) { cb.checked = !cb.checked; toggleOre(ore, cb.checked); } });
     rows.appendChild(row);
   }
@@ -634,95 +910,43 @@ for (const ore of Object.keys(ORE_COLOR)) {
 
 function toggleOre(ore, visible) {
   oreEnabled[ore] = visible;
-  if (visible) {
-    if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]);
-  } else {
-    depositLayer.removeLayer(oreSubLayers[ore]);
-  }
-  // update legend row styling
+  if (visible) { if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]); }
+  else depositLayer.removeLayer(oreSubLayers[ore]);
   document.querySelectorAll('.legend-row').forEach(row => {
     const cb = row.querySelector('.legend-check');
     if (cb) row.classList.toggle('disabled', !cb.checked);
   });
 }
 
-function showLegend(visible) {
-  document.getElementById('legend').style.display = visible ? 'block' : 'none';
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  SETTINGS PANEL — opacity sliders
-// ═══════════════════════════════════════════════════════════════
-
-const opacityState = { players: 0.85, deposits: 0.80, caves: 0.70, geysers: 0.75 };
-
-document.getElementById('btn-settings').addEventListener('click', () => {
-  const p = document.getElementById('settings-panel');
-  p.style.display = p.style.display === 'none' ? 'block' : 'none';
-});
-
-['players','deposits','caves','geysers'].forEach(key => {
-  const slider = document.getElementById('opacity-' + key);
-  const valEl  = document.getElementById('opacity-' + key + '-val');
-  slider.addEventListener('input', () => {
-    const v = slider.value / 100;
-    opacityState[key] = v;
-    valEl.textContent = slider.value + '%';
-    applyOpacity(key, v);
+function setAllOres(visible) {
+  Object.keys(ORE_COLOR).forEach(ore => {
+    oreEnabled[ore] = visible;
+    if (visible) { if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]); }
+    else depositLayer.removeLayer(oreSubLayers[ore]);
   });
-});
-
-function applyOpacity(category, opacity) {
-  let layer;
-  if (category === 'players')  layer = playerLayer;
-  else if (category === 'deposits') layer = depositLayer;
-  else if (category === 'caves')    layer = caveLayer;
-  else if (category === 'geysers')  { applyOpacityToLayer(enzymeLayer, opacity); applyOpacityToLayer(oilLayer, opacity); return; }
-  if (layer) applyOpacityToLayer(layer, opacity);
-}
-
-function applyOpacityToLayer(layer, opacity) {
-  layer.eachLayer(sub => {
-    if (sub.eachLayer) {
-      // sub-layerGroup (ore sub-layers)
-      sub.eachLayer(m => setMarkerOpacity(m, opacity));
-    } else {
-      setMarkerOpacity(sub, opacity);
-    }
-  });
-}
-
-function setMarkerOpacity(marker, opacity) {
-  // skip exotic-highlighted markers
-  if (marker._exoticHighlight) return;
-  if (marker.setStyle) marker.setStyle({ fillOpacity: opacity, opacity: opacity });
+  document.querySelectorAll('.legend-check').forEach(cb => { cb.checked = visible; });
+  document.querySelectorAll('.legend-row').forEach(row => row.classList.toggle('disabled', !visible));
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  HIGHLIGHT EXOTICS
 // ═══════════════════════════════════════════════════════════════
 
-let exoticHighlightOn = false;
-
-document.getElementById('btn-exotics').addEventListener('click', () => {
+document.getElementById('exotic-btn').addEventListener('click', () => {
   exoticHighlightOn = !exoticHighlightOn;
-  document.getElementById('btn-exotics').classList.toggle('active', exoticHighlightOn);
-  applyExoticHighlight();
-});
-
-function applyExoticHighlight() {
+  document.getElementById('exotic-btn').classList.toggle('active', exoticHighlightOn);
   if (!oreSubLayers.Exotic) return;
   oreSubLayers.Exotic.eachLayer(m => {
     if (exoticHighlightOn) {
-      m._exoticHighlight = true;
+      m._exoticHL = true;
       m.setStyle({ radius: 8, fillOpacity: 1, opacity: 1, weight: 3, color: '#ff66ff', fillColor: '#cc22cc' });
       m.bringToFront();
     } else {
-      m._exoticHighlight = false;
-      m.setStyle({ radius: 4, fillOpacity: opacityState.deposits, opacity: opacityState.deposits, weight: 1, color: 'rgba(255,255,255,0.3)', fillColor: '#cc22cc' });
+      m._exoticHL = false;
+      m.setStyle({ radius: 4, fillOpacity: opacity.deposit, opacity: opacity.deposit, weight: 1, color: 'rgba(255,255,255,0.3)', fillColor: '#cc22cc' });
     }
   });
-}
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  PLAYER LAYER
@@ -732,58 +956,37 @@ const playerState = {};
 let colourIdx = 0;
 
 function getColour(id) {
-  if (!playerState[id]) {
-    playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
-  }
+  if (!playerState[id]) playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
   return playerState[id].colour;
 }
 
 function updatePlayers(players) {
   const online = players.filter(p => p.online);
-  document.getElementById('player-count').textContent =
-    `${online.length} / ${players.length} online`;
+  document.getElementById('player-count').textContent = `${online.length} / ${players.length} players`;
 
-  const seen = new Set();
+  playerLayer.clearLayers();
+  Object.values(playerState).forEach(s => s.marker = null);
+
   online.forEach(p => {
-    seen.add(p.steam_id);
-    const ll = toLatLng(p.x_m, p.y_m);
-    if (playerState[p.steam_id]?.marker) {
-      playerState[p.steam_id].marker.setLatLng(ll);
-    } else {
-      const colour = getColour(p.steam_id);
-      const marker = L.circleMarker(ll, {
-        radius: 7, color: colour, fillColor: colour,
-        fillOpacity: opacityState.players, weight: 2,
-        opacity: opacityState.players,
-      }).addTo(playerLayer);
-      marker.bindTooltip(p.character_name, {
-        permanent: true, direction: 'top',
-        offset: [0, -10], className: 'player-label',
-      });
-      playerState[p.steam_id] = playerState[p.steam_id] || {};
-      playerState[p.steam_id].marker = marker;
-    }
+    const colour = getColour(p.steam_id);
+    const marker = L.circleMarker(toLatLng(p.x_m, p.y_m), {
+      radius: 7, color: colour, fillColor: colour,
+      fillOpacity: opacity.player, weight: 2, opacity: opacity.player,
+    }).addTo(playerLayer);
+    marker.bindTooltip(p.character_name, { permanent: true, direction: 'top', offset: [0,-10], className: 'player-label' });
+    playerState[p.steam_id] = playerState[p.steam_id] || {};
+    playerState[p.steam_id].marker = marker;
   });
-
-  for (const id of Object.keys(playerState)) {
-    if (!seen.has(id) && playerState[id]?.marker) {
-      playerState[id].marker.remove();
-      playerState[id].marker = null;
-    }
-  }
 
   const list = document.getElementById('player-list');
   list.innerHTML = '';
   players.forEach(p => {
     const item = document.createElement('div');
     item.className = 'player-item';
-    const colour   = getColour(p.steam_id);
-    const dot      = `<span class="online-dot" style="background:${colour}"></span>`;
-    const coordTxt = p.online
-      ? `X ${p.x_m} m  Y ${p.y_m} m  Z ${p.z_m} m`
-      : 'offline';
-    item.innerHTML = `<div class="name">${dot}${p.character_name}</div>
-                      <div class="coords-text">${coordTxt}</div>`;
+    const colour = getColour(p.steam_id);
+    const dot = `<span class="online-dot" style="background:${colour}"></span>`;
+    const coordTxt = p.online ? `X ${p.x_m} m  Y ${p.y_m} m  Z ${p.z_m} m` : 'offline';
+    item.innerHTML = `<div class="name">${dot}${p.character_name}</div><div class="coords-text">${coordTxt}</div>`;
     if (p.online && playerState[p.steam_id]?.marker) {
       item.addEventListener('click', () => {
         map.setView(toLatLng(p.x_m, p.y_m), 1, { animate: true });
@@ -802,89 +1005,119 @@ function drawStaticPOIs(data) {
   enzymeLayer.clearLayers();
   oilLayer.clearLayers();
   caveLayer.clearLayers();
-  // Clear ore sub-layers (not depositLayer itself — it holds the sub-layerGroups)
   for (const ore of Object.keys(oreSubLayers)) oreSubLayers[ore].clearLayers();
 
-  // Enzyme geysers
   (data.geysers?.enzyme || []).forEach(g => {
-    const tip = `<b>Enzyme Geyser</b><br>Horde: ${g.horde || '?'}<br>`
-              + `Completions: ${g.completions ?? 0}<br>Active: ${g.active ? 'yes' : 'no'}`;
-    L.circleMarker(toLatLng(g.x_m, g.y_m), {
-      radius: 7, color: '#16a34a', fillColor: '#22c55e',
-      fillOpacity: opacity.geyser, weight: 2,
-    }).bindTooltip(tip).addTo(enzymeLayer);
+    const tip = `<b>Enzyme Geyser</b><br>Horde: ${g.horde || '?'}<br>Completions: ${g.completions ?? 0}<br>Active: ${g.active ? 'yes' : 'no'}`;
+    L.circleMarker(toLatLng(g.x_m, g.y_m), { radius: 7, color: '#16a34a', fillColor: '#22c55e', fillOpacity: opacity.geyser, weight: 2 })
+     .bindTooltip(tip).addTo(enzymeLayer);
   });
 
-  // Oil geysers
   (data.geysers?.oil || []).forEach(g => {
-    L.circleMarker(toLatLng(g.x_m, g.y_m), {
-      radius: 7, color: '#78350f', fillColor: '#b45309',
-      fillOpacity: opacity.geyser, weight: 2,
-    }).bindTooltip('<b>Oil Geyser</b><br>Active: ' + (g.active ? 'yes' : 'no'))
-      .addTo(oilLayer);
+    L.circleMarker(toLatLng(g.x_m, g.y_m), { radius: 7, color: '#78350f', fillColor: '#b45309', fillOpacity: opacity.geyser, weight: 2 })
+     .bindTooltip('<b>Oil Geyser</b><br>Active: ' + (g.active ? 'yes' : 'no')).addTo(oilLayer);
   });
 
-  // Caves
   (data.caves || []).forEach(c => {
     const facing = c.yaw != null ? `  •  Facing ${yawToCompass(c.yaw)} (${c.yaw}°)` : '';
     const mined  = c.fully_mined ? '  •  <b>Mined out</b>' : '';
-    L.circleMarker(toLatLng(c.x_m, c.y_m), {
-      radius: 5, color: '#9ca3af', fillColor: '#374151',
-      fillOpacity: opacity.cave, weight: 2,
-    }).bindTooltip(`<b>Cave Entrance</b>${mined}${facing}`).addTo(caveLayer);
+    L.circleMarker(toLatLng(c.x_m, c.y_m), { radius: 5, color: '#9ca3af', fillColor: '#374151', fillOpacity: opacity.cave, weight: 2 })
+     .bindTooltip(`<b>Cave Entrance</b>${mined}${facing}`).addTo(caveLayer);
   });
 
-  // ── Resource deposits ── (into per-ore sub-layers)
   (data.deposits || []).forEach(d => {
-    const color   = ORE_COLOR[d.ore] || '#888';
-    const status  = remainingLabel(d.remaining);
-    const catStr  = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
-    const tip     = `<b>${d.ore}</b> [${catStr}]<br>Status: ${status}`;
-    const sub     = oreSubLayers[d.ore];
-    const target  = sub || depositLayer;
+    const color  = ORE_COLOR[d.ore] || '#888';
+    const status = remainingLabel(d.remaining);
+    const cat    = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
     L.circleMarker(toLatLng(d.x_m, d.y_m), {
       radius: 4, color: 'rgba(255,255,255,0.3)', fillColor: color,
-      fillOpacity: opacityState.deposits, weight: 1,
-    }).bindTooltip(tip).addTo(target);
+      fillOpacity: opacity.deposit, weight: 1,
+    }).bindTooltip(`<b>${d.ore}</b> [${cat}]<br>Status: ${status}`)
+      .addTo(oreSubLayers[d.ore] || depositLayer);
   });
 
-  // Apply current opacity to newly drawn layers
-  applyOpacityToLayer(enzymeLayer, opacityState.geysers);
-  applyOpacityToLayer(oilLayer, opacityState.geysers);
-  applyOpacityToLayer(caveLayer, opacityState.caves);
-  // Re-apply exotic highlight if active
-  if (exoticHighlightOn) applyExoticHighlight();
+  if (exoticHighlightOn) document.getElementById('exotic-btn').click();
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  POLLING
+//  FILE UPLOAD
 // ═══════════════════════════════════════════════════════════════
 
-let lastVersion = -1;
-
-function setStatus(state, text) {
-  document.getElementById('status-dot').className =
-    state === 'loading' ? 'loading' : state === 'ok' ? '' : 'stale';
-  document.getElementById('status-text').textContent = text;
+function showUpload() {
+  document.getElementById('upload-overlay').style.display = 'flex';
+  document.getElementById('parse-status').textContent = '';
+  document.getElementById('parse-status').className = '';
 }
 
-function poll() {
-  setStatus('loading', 'updating…');
-  fetch('/api/state?_=' + Date.now())
-    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(data => {
-      if (data.version !== lastVersion) {
-        drawStaticPOIs(data);
-        lastVersion = data.version;
-      }
-      updatePlayers(data.players || []);
-      setStatus('ok', `updated ${new Date().toLocaleTimeString()}`);
-    })
-    .catch(err => { console.error(err); setStatus('error', 'failed – retrying'); });
+function setParseStatus(msg, isErr) {
+  const el = document.getElementById('parse-status');
+  el.textContent = msg;
+  el.className = isErr ? 'err' : '';
 }
 
-poll();
-setInterval(poll, POLL_INTERVAL);
+async function handleFile(file) {
+  if (!file) return;
+  setParseStatus('Reading file…');
+  document.getElementById('status-dot').className = 'loading';
+  document.getElementById('status-text').textContent = 'Parsing…';
+
+  try {
+    setParseStatus('Decompressing savegame…');
+    const binary = await parseGDJson(file);
+
+    setParseStatus('Extracting players…');
+    await tick();
+    const players = extractPlayers(binary);
+
+    setParseStatus('Extracting deposits…');
+    await tick();
+    const deposits = extractDeposits(binary);
+
+    setParseStatus('Extracting caves…');
+    await tick();
+    const caves = extractCaves(binary);
+
+    setParseStatus('Extracting geysers…');
+    await tick();
+    const geysers = extractGeysers(binary);
+
+    // Render
+    drawStaticPOIs({ geysers, caves, deposits });
+    updatePlayers(players);
+
+    const summary = `${players.filter(p=>p.online).length}/${players.length} players · ${deposits.length} deposits · ${caves.length} caves`;
+    document.getElementById('status-dot').className = 'ok';
+    document.getElementById('status-text').textContent = summary;
+
+    // Hide overlay
+    document.getElementById('upload-overlay').style.display = 'none';
+  } catch(e) {
+    setParseStatus('Error: ' + e.message, true);
+    document.getElementById('status-dot').className = 'err';
+    document.getElementById('status-text').textContent = 'Parse failed';
+    console.error(e);
+  }
+}
+
+function tick() { return new Promise(r => setTimeout(r, 0)); }
+
+// Drop zone
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+// Show overlay on load
+showUpload();
 </script>
 </body>
 </html>
