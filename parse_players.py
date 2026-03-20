@@ -726,6 +726,241 @@ def extract_players_compat(binary):
 
 
 # ---------------------------------------------------------------------------
+# Library API — load binary + targeted scans (no full property parse needed)
+# ---------------------------------------------------------------------------
+
+def load_binary(path=None):
+    """Decompress the ProspectBlob from GD.json and return raw bytes."""
+    if path is None:
+        path = INPUT_FILE
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    return zlib.decompress(base64.b64decode(raw["ProspectBlob"]["BinaryBlob"]))
+
+
+def _read_prop_val(d, p, ptype):
+    """Read an FProperty value starting at p (right after the name FString null).
+    ptype: 'name' | 'str' | 'float_bits' | 'bool' | 'int'
+    Returns the value or None on failure.
+    """
+    try:
+        tl, = struct.unpack_from("<i", d, p); p += 4
+        p  += tl                                        # skip type name FString
+        _,  = struct.unpack_from("<i", d, p); p += 4   # payload_size
+        _,  = struct.unpack_from("<i", d, p); p += 4   # array_index
+        if ptype == "bool":
+            return bool(d[p])                           # bool_val byte (no payload)
+        hg = d[p]; p += 1
+        if hg: p += 16
+        if ptype in ("name", "str"):
+            vl, = struct.unpack_from("<i", d, p); p += 4
+            if 0 < vl < 500:
+                return d[p:p + vl - 1].decode("latin-1")
+        elif ptype == "float_bits":
+            val, = struct.unpack_from("<f", d, p)
+            return val
+        elif ptype == "int":
+            val, = struct.unpack_from("<i", d, p)
+            return val
+    except Exception:
+        pass
+    return None
+
+
+def _scan_prop(d, key, start, end, ptype):
+    """Forward-scan for a property key in [start, end) and return its value."""
+    pos = d.find(key, start, end)
+    if pos == -1:
+        return None
+    return _read_prop_val(d, pos + len(key), ptype)
+
+
+def _rscan_prop(d, key, before, lookback, ptype):
+    """Backward-scan for a property key ending before `before` and return its value."""
+    pos = d.rfind(key, max(0, before - lookback), before)
+    if pos == -1:
+        return None
+    return _read_prop_val(d, pos + len(key), ptype)
+
+
+def _scan_translation(d, start, end):
+    """Scan for ActorTransform.Translation → (x_m, y_m, z_m) or None."""
+    pos = d.find(b"Translation\x00", start, end)
+    if pos == -1:
+        return None
+    try:
+        p = pos + 12                                        # skip 'Translation\x00'
+        tl, = struct.unpack_from("<i", d, p); p += 4
+        p += tl                                             # skip 'StructProperty\x00'
+        sz, = struct.unpack_from("<i", d, p); p += 4       # payload_size
+        _,  = struct.unpack_from("<i", d, p); p += 4       # array_index
+        tl2, = struct.unpack_from("<i", d, p); p += 4
+        p += tl2                                            # skip struct_name 'Vector\x00'
+        p += 16                                             # struct GUID
+        hg = d[p]; p += 1
+        if hg: p += 16
+        if sz == 12:
+            x, y, z = struct.unpack_from("<fff", d, p)
+            return round(x / 100, 1), round(y / 100, 1), round(z / 100, 1)
+    except Exception:
+        pass
+    return None
+
+
+def _scan_rotation_yaw(d, start, end):
+    """Scan for ActorTransform.Rotation quaternion → yaw in degrees or None."""
+    import math
+    pos = d.find(b"Rotation\x00", start, end)
+    if pos == -1:
+        return None
+    try:
+        p = pos + 9                                         # skip 'Rotation\x00'
+        tl, = struct.unpack_from("<i", d, p); p += 4
+        p += tl                                             # skip 'StructProperty\x00'
+        sz, = struct.unpack_from("<i", d, p); p += 4
+        _,  = struct.unpack_from("<i", d, p); p += 4
+        tl2, = struct.unpack_from("<i", d, p); p += 4
+        p += tl2                                            # skip 'Quat\x00'
+        p += 16                                             # struct GUID
+        hg = d[p]; p += 1
+        if hg: p += 16
+        if sz == 16:
+            rx, ry, rz, rw = struct.unpack_from("<ffff", d, p)
+            yaw = math.degrees(math.atan2(2 * (rw * rz + rx * ry),
+                                          1 - 2 * (ry * ry + rz * rz)))
+            return round(yaw, 1)
+    except Exception:
+        pass
+    return None
+
+
+def extract_geysers(categories):
+    """Extract geyser entries from a categorized actor dict (output of categorize())."""
+    def _pull(cat, gtype):
+        out = []
+        for entry in categories.get(cat, []):
+            bd = entry.get("raw", {}).get("BinaryData", {})
+            if not isinstance(bd, dict):
+                continue
+            tr = (bd.get("ActorTransform") or {}).get("Translation")
+            if not isinstance(tr, dict) or "x" not in tr:
+                continue
+            rc = bd.get("ResourceComponentRecord") or {}
+            item = {
+                "x_m":    round(tr["x"] / 100, 1),
+                "y_m":    round(tr["y"] / 100, 1),
+                "z_m":    round(tr["z"] / 100, 1),
+                "active": rc.get("bDeviceActive", False),
+            }
+            if gtype == "enzyme":
+                item["completions"] = bd.get("Completions", 0)
+                item["horde"]       = bd.get("HordeDTKey", "")
+            out.append(item)
+        return out
+
+    return {
+        "enzyme": _pull("enzyme_geyser", "enzyme"),
+        "oil":    _pull("oil_geyser",    "oil"),
+    }
+
+
+def extract_deposits_scan(binary):
+    """Targeted binary scan for all resource deposit actors.
+    Returns a list of dicts with ore, remaining, category, x_m, y_m, z_m.
+    """
+    import math
+    deposits = []
+    pat = b"ResourceDepositRecorderComponent\x00"
+    i = 0
+    while True:
+        i = binary.find(pat, i)
+        if i == -1:
+            break
+
+        # ActorClassName is in the outer props, a few hundred bytes before anchor
+        actor_class = _rscan_prop(binary, b"ActorClassName\x00", i, 700, "name")
+
+        # Find the BinaryData block for this entry
+        end    = binary.find(b"ComponentClassName\x00", i + 33, i + 8000)
+        if end == -1:
+            end = i + 6000
+        bd_pos = binary.find(b"BinaryData\x00", i, i + 500)
+        if bd_pos == -1:
+            i += len(pat)
+            continue
+
+        ore       = _scan_prop(binary, b"ResourceDTKey\x00",     bd_pos, end, "name")
+        rr_raw    = _scan_prop(binary, b"ResourceRemaining\x00", bd_pos, end, "float_bits")
+        loc       = _scan_translation(binary, bd_pos, end)
+
+        remaining = None
+        if rr_raw is not None and not math.isnan(rr_raw):
+            remaining = round(float(rr_raw), 4)
+
+        if actor_class == "BP_Deep_Mining_Ore_Deposit_Cave_C":
+            category = "cave"
+        elif actor_class in ("BP_MetaDeposit_Conifer_C", "BP_Mission_Meta_Voxel_C"):
+            category = "meta"
+        else:
+            category = "surface"
+
+        if loc and ore:
+            x_m, y_m, z_m = loc
+            deposits.append({
+                "ore":       ore,
+                "remaining": remaining,
+                "category":  category,
+                "x_m":       x_m,
+                "y_m":       y_m,
+                "z_m":       z_m,
+            })
+
+        i += len(pat)
+    return deposits
+
+
+def extract_caves_scan(binary):
+    """Targeted binary scan for all cave entrance actors.
+    Returns a list of dicts with x_m, y_m, z_m, yaw, actor_class, fully_mined.
+    """
+    caves = []
+    pat   = b"CaveEntranceRecorderComponent\x00"
+    i     = 0
+    while True:
+        i = binary.find(pat, i)
+        if i == -1:
+            break
+
+        actor_class = _rscan_prop(binary, b"ActorClassName\x00", i, 700, "name")
+
+        end    = binary.find(b"ComponentClassName\x00", i + 33, i + 15000)
+        if end == -1:
+            end = i + 12000
+        bd_pos = binary.find(b"BinaryData\x00", i, i + 500)
+        if bd_pos == -1:
+            i += len(pat)
+            continue
+
+        loc         = _scan_translation(binary, bd_pos, end)
+        yaw         = _scan_rotation_yaw(binary, bd_pos, end)
+        fully_mined = _scan_prop(binary, b"bIsVoxelFullyMined\x00", bd_pos, end, "bool")
+
+        if loc:
+            x_m, y_m, z_m = loc
+            caves.append({
+                "x_m":         x_m,
+                "y_m":         y_m,
+                "z_m":         z_m,
+                "yaw":         yaw,
+                "actor_class": actor_class,
+                "fully_mined": fully_mined,
+            })
+
+        i += len(pat)
+    return caves
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

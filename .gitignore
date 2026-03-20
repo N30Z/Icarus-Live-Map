@@ -1,0 +1,4 @@
+__pycache__
+*.pyc
+actors.bin
+__pycache__/*
