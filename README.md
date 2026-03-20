@@ -1,7 +1,7 @@
 # Icarus Live Map
 
 An interactive, browser-based map for **Icarus** dedicated server sessions.
-Upload your `GD.json` savegame file and explore player positions, ore deposits, cave entrances, and geysers — all processed locally; nothing leaves your browser.
+Upload your `savegame.json` savegame file and explore player positions, ore deposits, cave entrances, and geysers — all processed locally; nothing leaves your browser.
 
 **[Open the map →](https://n30z.github.io/Icarus-Live-Map/)**
 
@@ -20,7 +20,7 @@ Upload your `GD.json` savegame file and explore player positions, ore deposits, 
 ## Usage
 
 1. Open the map at <https://n30z.github.io/Icarus-Live-Map/>
-2. Export `GD.json` from your Icarus dedicated server (or copy it from the server data directory)
+2. Export `savegame.json` from your Icarus dedicated server (or copy it from the server data directory)
 3. Drop the file onto the upload card — the map loads instantly
 
 ## Local development
@@ -40,4 +40,4 @@ All scripts require `GD.json` in the same directory and use only the Python stan
 
 ## How it works
 
-The browser downloads `GD.json`, base64-decodes and zlib-decompresses the `ProspectBlob.BinaryBlob`, then scans the raw UE4 FProperty binary stream for players, ore deposits, cave entrances, and geysers — the same logic as `parse_players.py` / `read_save.py`, ported to JavaScript.  The map is rendered with [Leaflet.js](https://leafletjs.com/) using `L.CRS.Simple` over a static `map.jpg` overlay.
+The browser downloads `savegame.json`, base64-decodes and zlib-decompresses the `ProspectBlob.BinaryBlob`, then scans the raw UE4 FProperty binary stream for players, ore deposits, cave entrances, and geysers — the same logic as `parse_players.py` / `read_save.py`, ported to JavaScript.  The map is rendered with [Leaflet.js](https://leafletjs.com/) using `L.CRS.Simple` over a static `map.jpg` overlay.
