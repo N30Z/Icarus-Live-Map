@@ -1,4 +1,4 @@
-# Icarus Live Map
+# Icarus Savegame Map
 
 An interactive, browser-based map for **Icarus** dedicated server sessions.
 Upload your `savegame.json` savegame file and explore player positions, ore deposits, cave entrances, and geysers — all processed locally; nothing leaves your browser.
