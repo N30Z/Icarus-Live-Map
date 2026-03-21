@@ -268,6 +268,33 @@
     .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
     .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
 
+    /* ── Player filter ───────────────────────────────────────── */
+    .player-filter-btns { display: flex; gap: 4px; }
+    .player-filter-btns button {
+      padding: 1px 5px; font-size: 9px; border-radius: 3px;
+      border: 1px solid #2a2f3d; background: #1a1f2e;
+      color: #6b7280; cursor: pointer;
+    }
+    .player-filter-btns button:hover { color: #c8d0e0; border-color: #3a4560; }
+    .player-item-row { display: flex; align-items: center; justify-content: space-between; }
+    .player-vis-btn {
+      padding: 0 5px; font-size: 12px; background: none;
+      border: 1px solid transparent; color: #4b6fa8;
+      cursor: pointer; border-radius: 3px; flex-shrink: 0; opacity: 0.7;
+    }
+    .player-vis-btn:hover { border-color: #4b6fa8; opacity: 1; }
+    .player-vis-btn.off { color: #4a5568; }
+    .player-item.hidden-player { opacity: 0.4; }
+
+    /* ── Skip overlay button ─────────────────────────────────── */
+    #skip-overlay-btn {
+      display: none; margin-top: 12px; width: 100%;
+      padding: 8px 0; font-size: 12px; background: #1a1f2e;
+      border: 1px solid #2a2f3d; color: #7eb8f7;
+      border-radius: 5px; cursor: pointer; transition: background .15s;
+    }
+    #skip-overlay-btn:hover { background: #222840; border-color: #3a4560; }
+
   </style>
 </head>
 <body>
@@ -284,6 +311,9 @@
     </div>
     <input type="file" id="file-input" accept=".json" />
     <div id="parse-status"></div>
+    <button id="skip-overlay-btn" onclick="document.getElementById('upload-overlay').style.display='none'">
+      View Map (caves from previous session)
+    </button>
   </div>
 </div>
 
@@ -306,7 +336,14 @@
   <!-- Players -->
   <div class="panel-box">
     <div class="panel-title" onclick="togglePanel('players')">
-      Players <span class="caret" id="caret-players">▼</span>
+      Players
+      <span style="display:flex;align-items:center;gap:6px">
+        <span class="player-filter-btns">
+          <button onclick="event.stopPropagation();setAllPlayersVisible(true)" title="Show all players">All</button>
+          <button onclick="event.stopPropagation();setAllPlayersVisible(false)" title="Hide all players">None</button>
+        </span>
+        <span class="caret" id="caret-players">▼</span>
+      </span>
     </div>
     <div id="player-list" class="panel-body"></div>
   </div>
@@ -938,6 +975,7 @@ document.getElementById('exotic-btn').addEventListener('click', () => {
 
 const playerState = {};
 let colourIdx = 0;
+let lastPlayers = [];
 
 function getColour(id) {
   if (!playerState[id]) playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
@@ -945,6 +983,7 @@ function getColour(id) {
 }
 
 function updatePlayers(players) {
+  lastPlayers = players;
   const online = players.filter(p => p.online);
   document.getElementById('player-count').textContent = `${online.length} / ${players.length} players`;
 
@@ -952,6 +991,7 @@ function updatePlayers(players) {
   Object.values(playerState).forEach(s => s.marker = null);
 
   online.forEach(p => {
+    if (playerState[p.steam_id]?.hidden) return;
     const colour = getColour(p.steam_id);
     const marker = L.circleMarker(toLatLng(p.x_m, p.y_m), {
       radius: 7, color: colour, fillColor: colour,
@@ -965,13 +1005,38 @@ function updatePlayers(players) {
   const list = document.getElementById('player-list');
   list.innerHTML = '';
   players.forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'player-item';
+    const isHidden = !!playerState[p.steam_id]?.hidden;
     const colour = getColour(p.steam_id);
-    const dot = `<span class="online-dot" style="background:${colour}"></span>`;
     const coordTxt = p.online ? `X ${p.x_m} m  Y ${p.y_m} m  Z ${p.z_m} m` : 'offline';
-    item.innerHTML = `<div class="name">${dot}${p.character_name}</div><div class="coords-text">${coordTxt}</div>`;
-    if (p.online && playerState[p.steam_id]?.marker) {
+
+    const item = document.createElement('div');
+    item.className = 'player-item' + (isHidden ? ' hidden-player' : '');
+
+    const row = document.createElement('div');
+    row.className = 'player-item-row';
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'name';
+    nameDiv.innerHTML = `<span class="online-dot" style="background:${colour}"></span>`;
+    nameDiv.appendChild(document.createTextNode(p.character_name));
+
+    const visBtn = document.createElement('button');
+    visBtn.className = 'player-vis-btn' + (isHidden ? ' off' : '');
+    visBtn.title = isHidden ? 'Show on map' : 'Hide from map';
+    visBtn.textContent = isHidden ? '○' : '●';
+    visBtn.addEventListener('click', e => { e.stopPropagation(); togglePlayerHidden(p.steam_id); });
+
+    row.appendChild(nameDiv);
+    row.appendChild(visBtn);
+
+    const coordDiv = document.createElement('div');
+    coordDiv.className = 'coords-text';
+    coordDiv.textContent = coordTxt;
+
+    item.appendChild(row);
+    item.appendChild(coordDiv);
+
+    if (p.online && !isHidden && playerState[p.steam_id]?.marker) {
       item.addEventListener('click', () => {
         map.setView(toLatLng(p.x_m, p.y_m), 1, { animate: true });
         playerState[p.steam_id].marker.openTooltip();
@@ -981,9 +1046,31 @@ function updatePlayers(players) {
   });
 }
 
+function togglePlayerHidden(steam_id) {
+  if (!playerState[steam_id]) return;
+  playerState[steam_id].hidden = !playerState[steam_id].hidden;
+  updatePlayers(lastPlayers);
+}
+
+function setAllPlayersVisible(visible) {
+  lastPlayers.forEach(p => {
+    if (!playerState[p.steam_id]) playerState[p.steam_id] = { colour: getColour(p.steam_id) };
+    playerState[p.steam_id].hidden = !visible;
+  });
+  updatePlayers(lastPlayers);
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  STATIC POI LAYERS
 // ═══════════════════════════════════════════════════════════════
+
+function parseCaveClass(ac) {
+  const m = /CaveEntrance_([A-Z]+)_([A-Z]+)/i.exec(ac || '');
+  if (!m) return '';
+  const b = { CF: 'Conifer Forest', AC: 'Arctic', DC: 'Desert' }[m[1].toUpperCase()] || m[1];
+  const s = { SML: 'Small', MED: 'Medium', LRG: 'Large' }[m[2].toUpperCase()] || m[2];
+  return b && s ? `${b} · ${s}` : b || s;
+}
 
 function drawStaticPOIs(data) {
   enzymeLayer.clearLayers();
@@ -1003,10 +1090,12 @@ function drawStaticPOIs(data) {
   });
 
   (data.caves || []).forEach(c => {
-    const facing = c.yaw != null ? `  •  Facing ${yawToCompass(c.yaw)} (${c.yaw}°)` : '';
-    const mined  = c.fully_mined ? '  •  <b>Mined out</b>' : '';
+    const info   = parseCaveClass(c.actor_class);
+    const facing = c.yaw != null ? `<br>Facing ${yawToCompass(c.yaw)} (${c.yaw.toFixed(1)}°)` : '';
+    const mined  = c.fully_mined ? '<br><b>⛏ Mined out</b>' : '';
+    const tip    = `<b>Cave Entrance</b>${info ? `<br>${info}` : ''}${mined}${facing}`;
     L.circleMarker(toLatLng(c.x_m, c.y_m), { radius: 5, color: '#9ca3af', fillColor: '#374151', fillOpacity: opacity.cave, weight: 2 })
-     .bindTooltip(`<b>Cave Entrance</b>${mined}${facing}`).addTo(caveLayer);
+     .bindTooltip(tip).addTo(caveLayer);
   });
 
   (data.deposits || []).forEach(d => {
@@ -1060,6 +1149,7 @@ async function handleFile(file) {
     setParseStatus('Extracting caves…');
     await tick();
     const caves = extractCaves(binary);
+    if (caves.length > 0) localStorage.setItem('icarus_caves', JSON.stringify(caves));
 
     setParseStatus('Extracting geysers…');
     await tick();
@@ -1099,6 +1189,21 @@ dropZone.addEventListener('drop', e => {
   dropZone.classList.remove('drag-over');
   handleFile(e.dataTransfer.files[0]);
 });
+
+// Load cached cave locations from previous session
+(function () {
+  try {
+    const cached = JSON.parse(localStorage.getItem('icarus_caves') || '[]');
+    if (cached.length > 0) {
+      drawStaticPOIs({ caves: cached, geysers: {}, deposits: [] });
+      document.getElementById('skip-overlay-btn').style.display = '';
+      document.getElementById('drop-hint').textContent =
+        `${cached.length} caves loaded from previous session`;
+      document.getElementById('status-dot').className = 'ok';
+      document.getElementById('status-text').textContent = `${cached.length} caves (cached)`;
+    }
+  } catch(e) { /* ignore corrupt cache */ }
+})();
 
 // Show overlay on load
 showUpload();
