@@ -4,7 +4,7 @@ actors.bin
 actors_readable.txt
 
 # Savegame data — user-specific, not for the repo
-GD.json
+# GD.json
 players.json
 savegame.json
 
