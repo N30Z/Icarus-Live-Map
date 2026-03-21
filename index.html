@@ -312,7 +312,7 @@
     <input type="file" id="file-input" accept=".json" />
     <div id="parse-status"></div>
     <button id="skip-overlay-btn" onclick="document.getElementById('upload-overlay').style.display='none'">
-      View Map (caves from previous session)
+      View Map
     </button>
   </div>
 </div>
@@ -1190,19 +1190,31 @@ dropZone.addEventListener('drop', e => {
   handleFile(e.dataTransfer.files[0]);
 });
 
-// Load cached cave locations from previous session
+// Load static cave positions.
+// Priority 1: caves.json (generated once by export_caves.py — truly permanent).
+// Priority 2: localStorage (fallback from a previous file upload in this browser).
 (function () {
-  try {
-    const cached = JSON.parse(localStorage.getItem('icarus_caves') || '[]');
-    if (cached.length > 0) {
-      drawStaticPOIs({ caves: cached, geysers: {}, deposits: [] });
-      document.getElementById('skip-overlay-btn').style.display = '';
-      document.getElementById('drop-hint').textContent =
-        `${cached.length} caves loaded from previous session`;
-      document.getElementById('status-dot').className = 'ok';
-      document.getElementById('status-text').textContent = `${cached.length} caves (cached)`;
-    }
-  } catch(e) { /* ignore corrupt cache */ }
+  function applyStaticCaves(caves, source) {
+    if (!caves.length) return;
+    drawStaticPOIs({ caves, geysers: {}, deposits: [] });
+    const btn = document.getElementById('skip-overlay-btn');
+    btn.textContent = `View Map  (${caves.length} caves loaded)`;
+    btn.style.display = '';
+    document.getElementById('drop-hint').textContent =
+      `${caves.length} caves loaded from ${source} • load file for players & deposits`;
+    document.getElementById('status-dot').className = 'ok';
+    document.getElementById('status-text').textContent = `${caves.length} caves`;
+  }
+
+  fetch('caves.json')
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(caves => applyStaticCaves(caves, 'caves.json'))
+    .catch(() => {
+      try {
+        const cached = JSON.parse(localStorage.getItem('icarus_caves') || '[]');
+        if (cached.length) applyStaticCaves(cached, 'browser cache');
+      } catch(e) {}
+    });
 })();
 
 // Show overlay on load
