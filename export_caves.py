@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-export_caves.py  —  Extract Olympus cave entrance positions from GD.json.
+export_caves.py  —  Extract cave entrance positions from GD.json.
 
 Cave locations are fixed game-world coordinates that never change between
-sessions.  Run this once (or after a map reset) to generate caves.json,
+sessions.  Run this once (or after a map reset) to generate the caves file,
 which index.html will load automatically on every page visit.
 
 Usage:
     python export_caves.py
     python export_caves.py /path/to/GD.json
 
-Writes:  caves.json
+Writes:  caves/{map}.json   (e.g. caves/olympus.json)
+         caves.json          (legacy alias for Olympus, kept for compatibility)
 """
 
-import json, base64, zlib, struct, math, sys
+import json, base64, zlib, struct, math, sys, os
 
-INPUT_FILE  = "GD.json"
-OUTPUT_FILE = "caves.json"
+INPUT_FILE = "GD.json"
+KNOWN_MAPS = ["Olympus", "Styx", "Prometheus", "Elysium"]
 
 
 # ── Binary helpers ────────────────────────────────────────────────────────────
@@ -166,6 +167,15 @@ def extract_caves(buf):
     return caves
 
 
+# ── World detection ───────────────────────────────────────────────────────────
+
+def detect_world(binary):
+    for name in KNOWN_MAPS:
+        if name.encode("latin-1") in binary:
+            return name
+    return "Unknown"
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -178,6 +188,9 @@ def main():
     blob   = data["ProspectBlob"]["BinaryBlob"]
     binary = zlib.decompress(base64.b64decode(blob))
     print(f"[+] Decompressed: {len(binary):,} bytes")
+
+    world = detect_world(binary)
+    print(f"[+] Detected world: {world}")
 
     print("[+] Extracting cave entrances ...")
     caves = extract_caves(binary)
@@ -196,10 +209,18 @@ def main():
     for label, n in sorted(counts.items()):
         print(f"    {n:3d}  {label}")
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    os.makedirs("caves", exist_ok=True)
+    out_path = os.path.join("caves", f"{world.lower()}.json")
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(caves, f, separators=(",", ":"))
+    print(f"\n[+] Written to {out_path}")
 
-    print(f"\n[+] Written to {OUTPUT_FILE}")
+    # Legacy alias for Olympus
+    if world.lower() == "olympus":
+        with open("caves.json", "w", encoding="utf-8") as f:
+            json.dump(caves, f, separators=(",", ":"))
+        print(f"[+] Also written to caves.json (legacy alias)")
+
     print(f"[+] Cave positions are permanent — index.html will load them automatically.")
 
 if __name__ == "__main__":

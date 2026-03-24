@@ -295,6 +295,29 @@
     }
     #skip-overlay-btn:hover { background: #222840; border-color: #3a4560; }
 
+    /* ── Map selector tabs ───────────────────────────────────── */
+    #map-tabs { display: flex; gap: 4px; }
+    .map-tab {
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .05em; text-transform: uppercase;
+      border: 1px solid #2a2f3d; border-radius: 4px;
+      background: transparent; color: #6b7280;
+      cursor: pointer; transition: all .15s;
+    }
+    .map-tab:hover { border-color: #4b6fa8; color: #c8d0e0; }
+    .map-tab.active { background: #1e3a5f; border-color: #4b6fa8; color: #7eb8f7; }
+
+    /* ── Grid labels ─────────────────────────────────────────── */
+    .grid-label {
+      font-size: 10px;
+      color: rgba(200,208,224,0.30);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      pointer-events: none;
+      user-select: none;
+      white-space: nowrap;
+    }
+
   </style>
 </head>
 <body>
@@ -320,6 +343,12 @@
 <!-- ── Header ─────────────────────────────────────────────────── -->
 <div id="header">
   <h1>Icarus Live Map</h1>
+  <div id="map-tabs">
+    <button class="map-tab active" data-map="olympus"    onclick="switchMap('olympus')">Olympus</button>
+    <button class="map-tab"        data-map="styx"       onclick="switchMap('styx')">Styx</button>
+    <button class="map-tab"        data-map="prometheus" onclick="switchMap('prometheus')">Prometheus</button>
+    <button class="map-tab"        data-map="elysium"    onclick="switchMap('elysium')">Elysium</button>
+  </div>
   <span id="player-count">– players</span>
   <button class="hdr-btn" id="exotic-btn">✦ Exotics</button>
   <button class="hdr-btn" id="load-btn" onclick="showUpload()">⬆ Load File</button>
@@ -403,10 +432,15 @@
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
 
-const MAP_IMAGE     = 'map.jpg';
-const MAP_MIN       = -4096;
-const MAP_MAX       =  4096;
-const Y_SIGN        = -1;
+const MAPS = {
+  olympus:    { label: 'Olympus',    image: 'maps/olympus.jpg',    min: -4096, max: 4096 },
+  styx:       { label: 'Styx',       image: 'maps/styx.jpg',       min: -4096, max: 4096 },
+  prometheus: { label: 'Prometheus', image: 'maps/prometheus.jpg', min: -4096, max: 4096 },
+  elysium:    { label: 'Elysium',    image: 'maps/elysium.jpg',    min: -4096, max: 4096 },
+};
+
+let currentMapId = 'olympus';
+const Y_SIGN = -1;
 
 const PLAYER_COLOURS = [
   '#60a5fa','#34d399','#f87171','#fbbf24',
@@ -810,6 +844,73 @@ function applyDepositOpacity() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  GRID
+// ═══════════════════════════════════════════════════════════════
+
+function rebuildGrid(min, max) {
+  gridLayer.clearLayers();
+  const cols = 16, rows = 16;
+  const cellW = (max - min) / cols;
+  const cellH = (max - min) / rows;
+  const letters = 'ABCDEFGHIJKLMNOP';
+  const lineStyle = { color: '#7a8aaa', weight: 1, opacity: 0.45, interactive: false };
+
+  for (let c = 0; c <= cols; c++) {
+    const lng = min + c * cellW;
+    L.polyline([[min, lng], [max, lng]], lineStyle).addTo(gridLayer);
+  }
+  for (let r = 0; r <= rows; r++) {
+    const lat = min + r * cellH;
+    L.polyline([[lat, min], [lat, max]], lineStyle).addTo(gridLayer);
+  }
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const label = letters[c] + (r + 1);
+      L.marker([min + r * cellH + cellH * 0.05, min + c * cellW + cellW * 0.05], {
+        icon: L.divIcon({ className: 'grid-label', html: label, iconSize: [0, 0], iconAnchor: [0, 0] }),
+        interactive: false,
+      }).addTo(gridLayer);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP SWITCHER
+// ═══════════════════════════════════════════════════════════════
+
+function switchMap(id, { silentCaves = false } = {}) {
+  if (!MAPS[id] || id === currentMapId) return;
+  currentMapId = id;
+  const cfg = MAPS[id];
+  const bounds = [[cfg.min, cfg.min], [cfg.max, cfg.max]];
+
+  // Update tab styles
+  document.querySelectorAll('.map-tab').forEach(t => t.classList.toggle('active', t.dataset.map === id));
+
+  // Swap map image + bounds
+  mapImageOverlay.setUrl(cfg.image);
+  mapImageOverlay.setBounds(bounds);
+  map.setMaxBounds([[cfg.min * 1.1, cfg.min * 1.1], [cfg.max * 1.1, cfg.max * 1.1]]);
+  map.fitBounds(bounds);
+
+  // Rebuild grid if it's visible
+  if (map.hasLayer(gridLayer)) rebuildGrid(cfg.min, cfg.max);
+
+  // Clear per-session data layers
+  playerLayer.clearLayers();
+  enzymeLayer.clearLayers();
+  oilLayer.clearLayers();
+  caveLayer.clearLayers();
+  for (const sub of Object.values(oreSubLayers)) sub.clearLayers();
+
+  if (!silentCaves) loadStaticCaves(id);
+
+  document.getElementById('status-dot').className = '';
+  document.getElementById('status-text').textContent = 'No file loaded';
+  document.getElementById('player-count').textContent = '– players';
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  ORE FILTER STATE
 // ═══════════════════════════════════════════════════════════════
 
@@ -822,24 +923,32 @@ let exoticHighlightOn = false;
 //  MAP SETUP
 // ═══════════════════════════════════════════════════════════════
 
-const bounds = [[MAP_MIN, MAP_MIN], [MAP_MAX, MAP_MAX]];
+const _initCfg = MAPS[currentMapId];
+const _initBounds = [[_initCfg.min, _initCfg.min], [_initCfg.max, _initCfg.max]];
 
 const map = L.map('map', {
   crs: L.CRS.Simple,
   minZoom: -4, maxZoom: 5,
   zoomSnap: 0.5, zoomDelta: 0.5,
   zoomControl: false,
-  maxBounds: [[MAP_MIN*1.1, MAP_MIN*1.1],[MAP_MAX*1.1, MAP_MAX*1.1]],
+  maxBounds: [[_initCfg.min*1.1, _initCfg.min*1.1],[_initCfg.max*1.1, _initCfg.max*1.1]],
   maxBoundsViscosity: 0.8,
 });
 
 L.control.zoom({ position: 'topleft' }).addTo(map);
-L.imageOverlay(MAP_IMAGE, bounds, { errorOverlayUrl: '' }).addTo(map);
-map.fitBounds(bounds);
+const mapImageOverlay = L.imageOverlay(_initCfg.image, _initBounds, { errorOverlayUrl: '' }).addTo(map);
+map.fitBounds(_initBounds);
+
+const gridLayer = L.layerGroup();
 
 map.on('mousemove', e => {
   const x = e.latlng.lng.toFixed(0), y = (e.latlng.lat * Y_SIGN).toFixed(0);
-  document.getElementById('coords').textContent = `X ${x} m   Y ${y} m`;
+  const cfg = MAPS[currentMapId];
+  const col = Math.floor((e.latlng.lng - cfg.min) / ((cfg.max - cfg.min) / 16));
+  const row = Math.floor((e.latlng.lat - cfg.min) / ((cfg.max - cfg.min) / 16)) + 1;
+  const colLetter = 'ABCDEFGHIJKLMNOP'[Math.max(0, Math.min(15, col))] || '';
+  const rowNum = Math.max(1, Math.min(16, row));
+  document.getElementById('coords').textContent = `${colLetter}${rowNum}  X ${x} m   Y ${y} m`;
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -857,6 +966,7 @@ L.control.layers({}, {
   'Oil Geysers':    oilLayer,
   'Caves':          caveLayer,
   'Deposits':       depositLayer,
+  'Grid':           gridLayer,
 }, { collapsed: true, position: 'topleft' }).addTo(map);
 
 map.on('overlayadd', e => {
@@ -873,6 +983,14 @@ map.on('overlayremove', e => {
   // depositLayer left the map — if exotic highlight is on, keep exotics visible
   // by adding the sublayer directly to the map.
   if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
+});
+
+// Draw grid on demand when toggled via layer control
+map.on('overlayadd', e => {
+  if (e.layer === gridLayer) { const cfg = MAPS[currentMapId]; rebuildGrid(cfg.min, cfg.max); }
+});
+map.on('overlayremove', e => {
+  if (e.layer === gridLayer) gridLayer.clearLayers();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1138,6 +1256,13 @@ async function handleFile(file) {
     setParseStatus('Decompressing savegame…');
     const binary = await parseGDJson(file);
 
+    // Auto-detect and switch map if needed (silentCaves=true — file will supply the data)
+    const detectedMap = detectWorldFromBinary(binary);
+    if (detectedMap && detectedMap !== currentMapId) {
+      switchMap(detectedMap, { silentCaves: true });
+      await tick();
+    }
+
     setParseStatus('Extracting players…');
     await tick();
     const players = extractPlayers(binary);
@@ -1149,7 +1274,9 @@ async function handleFile(file) {
     setParseStatus('Extracting caves…');
     await tick();
     const caves = extractCaves(binary);
-    if (caves.length > 0) localStorage.setItem('icarus_caves', JSON.stringify(caves));
+    if (caves.length > 0) {
+      localStorage.setItem(`icarus_caves_${currentMapId}`, JSON.stringify(caves));
+    }
 
     setParseStatus('Extracting geysers…');
     await tick();
@@ -1190,32 +1317,55 @@ dropZone.addEventListener('drop', e => {
   handleFile(e.dataTransfer.files[0]);
 });
 
-// Load static cave positions.
-// Priority 1: caves.json (generated once by export_caves.py — truly permanent).
-// Priority 2: localStorage (fallback from a previous file upload in this browser).
-(function () {
-  function applyStaticCaves(caves, source) {
-    if (!caves.length) return;
-    drawStaticPOIs({ caves, geysers: {}, deposits: [] });
-    const btn = document.getElementById('skip-overlay-btn');
-    btn.textContent = `View Map  (${caves.length} caves loaded)`;
-    btn.style.display = '';
-    document.getElementById('drop-hint').textContent =
-      `${caves.length} caves loaded from ${source} • load file for players & deposits`;
-    document.getElementById('status-dot').className = 'ok';
-    document.getElementById('status-text').textContent = `${caves.length} caves`;
-  }
+// ── Static cave loader (per-map) ──────────────────────────────
 
-  fetch('caves.json')
-    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-    .then(caves => applyStaticCaves(caves, 'caves.json'))
-    .catch(() => {
+function applyStaticCaves(caves, source) {
+  if (!caves.length) return;
+  drawStaticPOIs({ caves, geysers: {}, deposits: [] });
+  const btn = document.getElementById('skip-overlay-btn');
+  btn.textContent = `View Map  (${caves.length} caves loaded)`;
+  btn.style.display = '';
+  document.getElementById('drop-hint').textContent =
+    `${caves.length} caves loaded from ${source} • load file for players & deposits`;
+  document.getElementById('status-dot').className = 'ok';
+  document.getElementById('status-text').textContent = `${caves.length} caves`;
+}
+
+function loadStaticCaves(mapId) {
+  // Try caves/{mapId}.json, then legacy caves.json (olympus only), then localStorage
+  const urls = [`caves/${mapId}.json`];
+  if (mapId === 'olympus') urls.push('caves.json');
+
+  function tryNext(idx) {
+    if (idx >= urls.length) {
       try {
-        const cached = JSON.parse(localStorage.getItem('icarus_caves') || '[]');
+        const key = `icarus_caves_${mapId}`;
+        const raw = localStorage.getItem(key) || (mapId === 'olympus' ? localStorage.getItem('icarus_caves') : null) || '[]';
+        const cached = JSON.parse(raw);
         if (cached.length) applyStaticCaves(cached, 'browser cache');
       } catch(e) {}
-    });
-})();
+      return;
+    }
+    fetch(urls[idx])
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(caves => applyStaticCaves(caves, urls[idx]))
+      .catch(() => tryNext(idx + 1));
+  }
+  tryNext(0);
+}
+
+// Scan binary for world name to auto-select the right map
+function detectWorldFromBinary(buf) {
+  for (const id of Object.keys(MAPS)) {
+    const label = MAPS[id].label;
+    const pat = new TextEncoder().encode(label);
+    if (findFirst(buf, pat, 0, buf.length) !== -1) return id;
+  }
+  return null;
+}
+
+// Initial load
+loadStaticCaves(currentMapId);
 
 // Show overlay on load
 showUpload();
