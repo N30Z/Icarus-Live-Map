@@ -288,7 +288,7 @@
 
     /* ── Skip overlay button ─────────────────────────────────── */
     #skip-overlay-btn {
-      display: none; margin-top: 12px; width: 100%;
+      margin-top: 12px; width: 100%;
       padding: 8px 0; font-size: 12px; background: #1a1f2e;
       border: 1px solid #2a2f3d; color: #7eb8f7;
       border-radius: 5px; cursor: pointer; transition: background .15s;
@@ -433,10 +433,10 @@
 // ═══════════════════════════════════════════════════════════════
 
 const MAPS = {
-  olympus:    { label: 'Olympus',    image: 'maps/olympus.jpg',    min: -4096, max: 4096 },
-  styx:       { label: 'Styx',       image: 'maps/styx.jpg',       min: -4096, max: 4096 },
-  prometheus: { label: 'Prometheus', image: 'maps/prometheus.jpg', min: -4096, max: 4096 },
-  elysium:    { label: 'Elysium',    image: 'maps/elysium.jpg',    min: -4096, max: 4096 },
+  olympus:    { label: 'Olympus',    tileDir: 'maps/olympus',    tilePrefix: 'VisualMapTex_Terrain_016_OLYHeightMap',     min: -4096, max: 4096 },
+  styx:       { label: 'Styx',       tileDir: 'maps/styx',       tilePrefix: 'VisualMapTex_Terrain_017_STYXHeightMap',    min: -4096, max: 4096 },
+  prometheus: { label: 'Prometheus', tileDir: 'maps/prometheus', tilePrefix: 'VisualMapTex_Terrain_019_DLCheightmap',     min: -4096, max: 4096 },
+  elysium:    { label: 'Elysium',    tileDir: 'maps/elysium',    tilePrefix: 'T_VisualMapTex_Terrain_021_DLC2heightmap',  min: -4096, max: 4096 },
 };
 
 let currentMapId = 'olympus';
@@ -887,9 +887,8 @@ function switchMap(id, { silentCaves = false } = {}) {
   // Update tab styles
   document.querySelectorAll('.map-tab').forEach(t => t.classList.toggle('active', t.dataset.map === id));
 
-  // Swap map image + bounds
-  mapImageOverlay.setUrl(cfg.image);
-  mapImageOverlay.setBounds(bounds);
+  // Swap map tiles + bounds
+  buildMapTiles(cfg, mapTileLayer);
   map.setMaxBounds([[cfg.min * 1.1, cfg.min * 1.1], [cfg.max * 1.1, cfg.max * 1.1]]);
   map.fitBounds(bounds);
 
@@ -920,6 +919,25 @@ Object.keys(ORE_COLOR).forEach(o => oreEnabled[o] = true);
 let exoticHighlightOn = false;
 
 // ═══════════════════════════════════════════════════════════════
+//  MAP TILE BUILDER
+// ═══════════════════════════════════════════════════════════════
+
+function buildMapTiles(cfg, layerGroup) {
+  layerGroup.clearLayers();
+  const step = (cfg.max - cfg.min) / 8;
+  for (let x = 0; x < 8; x++) {
+    for (let y = 0; y < 8; y++) {
+      const url = `${cfg.tileDir}/${cfg.tilePrefix}_x${x}_y${y}.png`;
+      const lngMin = cfg.min + x * step;
+      const lngMax = cfg.min + (x + 1) * step;
+      const latMin = cfg.min + y * step;
+      const latMax = cfg.min + (y + 1) * step;
+      L.imageOverlay(url, [[latMin, lngMin], [latMax, lngMax]]).addTo(layerGroup);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  MAP SETUP
 // ═══════════════════════════════════════════════════════════════
 
@@ -936,7 +954,8 @@ const map = L.map('map', {
 });
 
 L.control.zoom({ position: 'topleft' }).addTo(map);
-const mapImageOverlay = L.imageOverlay(_initCfg.image, _initBounds, { errorOverlayUrl: '' }).addTo(map);
+const mapTileLayer = L.layerGroup().addTo(map);
+buildMapTiles(_initCfg, mapTileLayer);
 map.fitBounds(_initBounds);
 
 const gridLayer = L.layerGroup();
