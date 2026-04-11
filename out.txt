@@ -1,3 +1,38 @@
+C:\Users\buttl\Projects\Icarus-Live-Map>python memory_reader.py --trace --pid 18272
+[+] Prozess: IcarusServer-Win64-Shipping.exe  PID: 18272
+[+] Modul-Basis: 0x7FF792D70000  Größe: 105 MB
+[i] Modul IcarusServer-Win64-Shipping.exe  Basis=0x7FF792D70000  PE-Größe=105 MB
+[i] Lesbare Regions: 111  gesamt 105 MB
+[i] Probe @ 0x7FF792D70000: 4d5a90000300000004000000ffff0000  (7/16 nicht-null)
+[~] Suche 'mov rbx, [rip+rel32]'  (110 MB lesbar)...
+    scan  110 / 110 MB ... fertig
+    4405 Treffer für 488b1d
+[+] GWorld @ 0x7FF79360116D  →  ptr 0x7FF79901DC90  →  UWorld* 0x1A72485F810  (vtable 0x7FF7980F6CC8)
+[+] GameState @ UWorld+0xF0 = 0x1A709E64980
+[+] PlayerArray @ GameState+0x1A0  count=1
+[i] 25257 lesbare Regions  ~2915 MB
+
+[+] PlayerState[0] @ 0x1A75247C020  Name=''
+[~] Referenz: X=161.15m  Y=-230.83m  Z=-104.13m
+[~] Scanne Prozessspeicher nach FVector (Y-Anker ±1000 cm) ...
+[+] FVector @ 0x1A73D781270:  161.15m  -230.83m  -104.13m
+[+] Component @ 0x1A73D7811B0  FVector-Offset=+0xC0
+[!] Keine direkte Pawn→Component-Referenz in PS+0..0x600 gefunden
+[~] Suche alle Pointer auf Component 0x1A73D7811B0 im Prozessspeicher ...
+    0 direkte Pointer auf Component gefunden
+[!] Keine Kette gefunden. Manuelle Analyse nötig.
+    Component @ 0x1A73D7811B0  FVector @ +0xC0
+
+
+
+
+
+
+
+
+
+
+
 C:\Users\buttl\Projects\Icarus-Live-Map>C:/Users/buttl/AppData/Local/Microsoft/WindowsApps/python3.13.exe c:/Users/buttl/Projects/Icarus-Live-Map/memory_reader.py --pid 23444 --scan
 [+] Prozess: IcarusServer-Win64-Shipping.exe  PID: 23444
 [+] Modul-Basis: 0x7FF792D70000  Größe: 105 MB
