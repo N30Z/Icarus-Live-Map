@@ -13,7 +13,7 @@ import zlib
 import struct
 import sys
 
-INPUT_FILE  = "GD.json"
+INPUT_FILE  = "Lokal.json"
 OUT_ALL     = "savegame.json"
 OUT_PLAYERS = "players.json"
 
