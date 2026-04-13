@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Icarus Live Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0f14;
+      color: #c8d0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Parsing overlay ────────────────────────────────────────── */
+    #parse-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(13,15,20,.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #parse-overlay.active {
+      display: flex;
+    }
+    #parse-card {
+      background: #13161f;
+      border: 1px solid #2a2f3d;
+      border-radius: 8px;
+      padding: 24px 32px;
+      text-align: center;
+      pointer-events: all;
+    }
+    #parse-card .parse-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #7eb8f7;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    #parse-card .parse-msg {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #2a2f3d;
+      border-top-color: #7eb8f7;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: #13161f;
+      border-bottom: 1px solid #2a2f3d;
+      flex-shrink: 0;
+      z-index: 1000;
+      flex-wrap: wrap;
+    }
+    #header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #7eb8f7;
+      white-space: nowrap;
+    }
+    #player-count { font-size: 12px; color: #6b7280; white-space: nowrap; }
+
+    .hdr-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #c8d0e0;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .hdr-btn:hover { background: #222840; border-color: #3a4560; }
+    .hdr-btn.active { background: #cc22cc; border-color: #dd44dd; color: #fff; }
+
+    /* ── Savegame selector ──────────────────────────────────────── */
+    #sg-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    #sg-label {
+      font-size: 11px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+    #sg-select {
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #c8d0e0;
+      cursor: pointer;
+      max-width: 200px;
+    }
+    #sg-select:focus { outline: none; border-color: #4b6fa8; }
+    #sg-reload-btn {
+      padding: 3px 7px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #6b7280;
+      cursor: pointer;
+    }
+    #sg-reload-btn:hover { color: #c8d0e0; border-color: #3a4560; }
+
+    /* ── Status ──────────────────────────────────────────────────── */
+    #status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+    #status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #4a5568;
+      transition: background .3s;
+      flex-shrink: 0;
+    }
+    #status-dot.ok      { background: #22c55e; }
+    #status-dot.err     { background: #ef4444; }
+    #status-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Map tabs ────────────────────────────────────────────────── */
+    #map-tabs { display: flex; gap: 4px; }
+    .map-tab {
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .05em; text-transform: uppercase;
+      border: 1px solid #2a2f3d; border-radius: 4px;
+      background: transparent; color: #6b7280;
+      cursor: pointer; transition: all .15s;
+    }
+    .map-tab:hover { border-color: #4b6fa8; color: #c8d0e0; }
+    .map-tab.active { background: #1e3a5f; border-color: #4b6fa8; color: #7eb8f7; }
+
+    /* ── Map ─────────────────────────────────────────────────────── */
+    #map { flex: 1; background: #0d1117; }
+
+    /* ── Player tooltip ──────────────────────────────────────────── */
+    .leaflet-tooltip.player-label {
+      background: rgba(13,15,20,.85);
+      border: 1px solid #2a3a55;
+      border-radius: 4px;
+      color: #e2e8f4;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      padding: 2px 6px;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    .leaflet-tooltip.player-label::before { display: none; }
+
+    /* ── Coord bar ───────────────────────────────────────────────── */
+    #coords {
+      position: absolute;
+      bottom: 6px; right: 10px;
+      font-size: 11px; color: #4a5568;
+      z-index: 999; pointer-events: none;
+    }
+
+    /* ── Right panel ─────────────────────────────────────────────── */
+    #right-panel {
+      position: absolute;
+      top: 48px; right: 10px;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 900;
+    }
+    .panel-box {
+      background: rgba(13,15,20,.88);
+      border: 1px solid #2a2f3d;
+      border-radius: 6px;
+      backdrop-filter: blur(6px);
+      overflow: hidden;
+    }
+    .panel-title {
+      padding: 7px 12px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: #4b6fa8;
+      border-bottom: 1px solid #1e2535;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-title .caret { font-size: 9px; color: #4a5568; }
+    .panel-body { padding: 8px 12px; }
+    .panel-body.collapsed { display: none; }
+
+    #player-list { padding: 4px 0; }
+    .player-item {
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .player-item:hover { background: #1a1f2e; }
+    .player-item .name { font-size: 13px; font-weight: 600; color: #c8d0e0; }
+    .player-item .coords-text { font-size: 10px; color: #4a5568; margin-top: 1px; }
+    .player-item .online-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .setting-row:last-child { margin-bottom: 0; }
+    .setting-label { font-size: 11px; color: #9ca3af; flex-shrink: 0; width: 68px; }
+    .setting-row input[type=range] { flex: 1; accent-color: #4b6fa8; cursor: pointer; height: 4px; }
+    .setting-val { font-size: 10px; color: #6b7280; width: 28px; text-align: right; flex-shrink: 0; }
+
+    #ore-filter-body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px;
+    }
+    .ore-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 7px 3px 5px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      font-size: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity .15s, border-color .15s;
+    }
+    .ore-chip:hover { border-color: rgba(255,255,255,.3); }
+    .ore-chip.off { opacity: 0.3; }
+    .ore-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ore-filter-actions {
+      display: flex;
+      gap: 6px;
+      padding: 0 8px 8px;
+    }
+    .ore-filter-actions button {
+      flex: 1; padding: 3px 0; font-size: 10px;
+      border-radius: 4px; border: 1px solid #2a2f3d;
+      background: #1a1f2e; color: #9ca3af; cursor: pointer;
+    }
+    .ore-filter-actions button:hover { background: #222840; color: #c8d0e0; }
+
+    .leaflet-control-layers {
+      background: rgba(13,15,20,.92) !important;
+      border: 1px solid #2a2f3d !important;
+      border-radius: 6px !important;
+      color: #c8d0e0 !important;
+    }
+    .leaflet-control-layers-toggle { background-color: #13161f !important; }
+    .leaflet-control-layers-list { padding: 4px 8px; }
+    .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
+    .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
+
+    .player-filter-btns { display: flex; gap: 4px; }
+    .player-filter-btns button {
+      padding: 1px 5px; font-size: 9px; border-radius: 3px;
+      border: 1px solid #2a2f3d; background: #1a1f2e;
+      color: #6b7280; cursor: pointer;
+    }
+    .player-filter-btns button:hover { color: #c8d0e0; border-color: #3a4560; }
+    .player-item-row { display: flex; align-items: center; justify-content: space-between; }
+    .player-vis-btn {
+      padding: 0 5px; font-size: 12px; background: none;
+      border: 1px solid transparent; color: #4b6fa8;
+      cursor: pointer; border-radius: 3px; flex-shrink: 0; opacity: 0.7;
+    }
+    .player-vis-btn:hover { border-color: #4b6fa8; opacity: 1; }
+    .player-vis-btn.off { color: #4a5568; }
+    .player-item.hidden-player { opacity: 0.4; }
+
+    .grid-label {
+      font-size: 10px;
+      color: rgba(200,208,224,0.30);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      pointer-events: none;
+      user-select: none;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Parsing overlay (shown while server parses a savegame) ──── -->
+<div id="parse-overlay">
+  <div id="parse-card">
+    <div class="parse-title"><span class="spinner"></span>Parsing savegame…</div>
+    <div class="parse-msg" id="parse-msg">Server is extracting POI data. This may take 30–60 seconds.</div>
+  </div>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<div id="header">
+  <h1>Icarus Live Map</h1>
+  <div id="map-tabs">
+    <button class="map-tab active" data-map="olympus"    onclick="switchMap('olympus')">Olympus</button>
+    <button class="map-tab"        data-map="styx"       onclick="switchMap('styx')">Styx</button>
+    <button class="map-tab"        data-map="prometheus" onclick="switchMap('prometheus')">Prometheus</button>
+    <button class="map-tab"        data-map="elysium"    onclick="switchMap('elysium')">Elysium</button>
+  </div>
+  <span id="player-count">– players</span>
+  <button class="hdr-btn" id="exotic-btn">✦ Exotics</button>
+
+  <!-- Savegame selector for static POI data -->
+  <div id="sg-wrap">
+    <span id="sg-label">Savegame POI:</span>
+    <select id="sg-select" onchange="onSavegameSelect(this.value)">
+      <option value="">— None —</option>
+    </select>
+    <button id="sg-reload-btn" title="Refresh savegame list" onclick="fetchSavegames()">⟳</button>
+  </div>
+
+  <div id="status">
+    <div id="status-dot" class="loading"></div>
+    <span id="status-text">Connecting…</span>
+  </div>
+</div>
+
+<div id="map"></div>
+<div id="coords"></div>
+
+<div id="right-panel">
+  <!-- Players -->
+  <div class="panel-box">
+    <div class="panel-title" onclick="togglePanel('players')">
+      Players
+      <span style="display:flex;align-items:center;gap:6px">
+        <span class="player-filter-btns">
+          <button onclick="event.stopPropagation();setAllPlayersVisible(true)" title="Show all">All</button>
+          <button onclick="event.stopPropagation();setAllPlayersVisible(false)" title="Hide all">None</button>
+        </span>
+        <span class="caret" id="caret-players">▼</span>
+      </span>
+    </div>
+    <div id="player-list" class="panel-body"></div>
+  </div>
+
+  <!-- Ore filter -->
+  <div class="panel-box" id="ore-filter-box" style="display:none">
+    <div class="panel-title" onclick="togglePanel('ore')">
+      Ore Filter <span class="caret" id="caret-ore">▼</span>
+    </div>
+    <div id="ore-filter-wrap">
+      <div id="ore-filter-body"></div>
+      <div class="ore-filter-actions">
+        <button onclick="setAllOres(true)">All</button>
+        <button onclick="setAllOres(false)">None</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel-box">
+    <div class="panel-title" onclick="togglePanel('settings')">
+      Settings <span class="caret" id="caret-settings">▶</span>
+    </div>
+    <div id="settings-body" class="panel-body collapsed">
+      <div class="setting-row">
+        <span class="setting-label">Players</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.85"
+               oninput="setOpacity('player', this.value)" id="opacity-player" />
+        <span class="setting-val" id="val-player">85%</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Geysers</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.75"
+               oninput="setOpacity('geyser', this.value)" id="opacity-geyser" />
+        <span class="setting-val" id="val-geyser">75%</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Caves</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.70"
+               oninput="setOpacity('cave', this.value)" id="opacity-cave" />
+        <span class="setting-val" id="val-cave">70%</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Deposits</span>
+        <input type="range" min="0" max="1" step="0.05" value="0.80"
+               oninput="setOpacity('deposit', this.value)" id="opacity-deposit" />
+        <span class="setting-val" id="val-deposit">80%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+const MAPS = {
+  olympus:    { label: 'Olympus',    tileDir: 'maps/olympus',    tilePrefix: 'VisualMapTex_Terrain_016_OLYHeightMap',     min: -4096, max: 4096 },
+  styx:       { label: 'Styx',       tileDir: 'maps/styx',       tilePrefix: 'VisualMapTex_Terrain_017_STYXHeightMap',    min: -4096, max: 4096 },
+  prometheus: { label: 'Prometheus', tileDir: 'maps/prometheus', tilePrefix: 'VisualMapTex_Terrain_019_DLCheightmap',     min: -4096, max: 4096 },
+  elysium:    { label: 'Elysium',    tileDir: 'maps/elysium',    tilePrefix: 'T_VisualMapTex_Terrain_021_DLC2heightmap',  min: -4096, max: 4096 },
+};
+
+const PLAYER_COLOURS = [
+  '#60a5fa','#34d399','#f87171','#fbbf24',
+  '#a78bfa','#fb923c','#38bdf8','#4ade80',
+];
+const ORE_COLOR = {
+  Iron:'#a0a0a0', Coal:'#6b6b6b', Copper:'#cd7f32', Gold:'#ffd700',
+  Platinum:'#d0d0d0', Titanium:'#4a9ece', Aluminium:'#7fb8d8',
+  Silicon:'#8899bb', Oxite:'#00d4ff', Sulfur:'#d4d400',
+  Salt:'#f0eee8', Stone:'#966f50', Exotic:'#cc22cc',
+};
+
+const POLL_INTERVAL_MS    = 5000;
+const SG_REFRESH_MS       = 30000;
+const PARSE_POLL_MS       = 3000;  // re-poll /api/poi while server is parsing
+
+let currentMapId = 'olympus';
+const Y_SIGN     = -1;
+
+// ═══════════════════════════════════════════════════════════════
+//  OPACITY STATE
+// ═══════════════════════════════════════════════════════════════
+
+const opacity = { player: 0.85, geyser: 0.75, cave: 0.70, deposit: 0.80 };
+
+function setOpacity(type, val) {
+  opacity[type] = parseFloat(val);
+  document.getElementById('val-' + type).textContent = Math.round(val * 100) + '%';
+  if (type === 'player')
+    playerLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.player, opacity: opacity.player }));
+  else if (type === 'geyser') {
+    enzymeLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
+    oilLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
+  } else if (type === 'cave')
+    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
+  else if (type === 'deposit')
+    applyDepositOpacity();
+}
+
+function applyDepositOpacity() {
+  Object.values(oreSubLayers).forEach(sub =>
+    sub.eachLayer(m => { if (!m._exoticHL) m.setStyle({ fillOpacity: opacity.deposit, opacity: opacity.deposit }); })
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GRID
+// ═══════════════════════════════════════════════════════════════
+
+function rebuildGrid(min, max) {
+  gridLayer.clearLayers();
+  const cols = 16, rows = 16;
+  const cellW = (max - min) / cols, cellH = (max - min) / rows;
+  const letters = 'ABCDEFGHIJKLMNOP';
+  const lineStyle = { color: '#7a8aaa', weight: 1, opacity: 0.45, interactive: false };
+  for (let c = 0; c <= cols; c++) {
+    const lng = min + c * cellW;
+    L.polyline([[min, lng], [max, lng]], lineStyle).addTo(gridLayer);
+  }
+  for (let r = 0; r <= rows; r++) {
+    const lat = min + r * cellH;
+    L.polyline([[lat, min], [lat, max]], lineStyle).addTo(gridLayer);
+  }
+  for (let c = 0; c < cols; c++)
+    for (let r = 0; r < rows; r++)
+      L.marker([min + r * cellH + cellH * 0.05, min + c * cellW + cellW * 0.05], {
+        icon: L.divIcon({ className: 'grid-label', html: letters[c] + (r + 1), iconSize: [0,0], iconAnchor: [0,0] }),
+        interactive: false,
+      }).addTo(gridLayer);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP TILE BUILDER
+// ═══════════════════════════════════════════════════════════════
+
+function buildMapTiles(cfg, layerGroup) {
+  layerGroup.clearLayers();
+  const step = (cfg.max - cfg.min) / 8;
+  for (let x = 0; x < 8; x++)
+    for (let y = 0; y < 8; y++) {
+      const url    = `${cfg.tileDir}/${cfg.tilePrefix}_x${x}_y${y}.png`;
+      const lngMin = cfg.min + x * step, lngMax = cfg.min + (x + 1) * step;
+      const latMin = cfg.min + y * step, latMax = cfg.min + (y + 1) * step;
+      L.imageOverlay(url, [[latMin, lngMin], [latMax, lngMax]]).addTo(layerGroup);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP SETUP
+// ═══════════════════════════════════════════════════════════════
+
+const _initCfg    = MAPS[currentMapId];
+const _initBounds = [[_initCfg.min, _initCfg.min], [_initCfg.max, _initCfg.max]];
+
+const map = L.map('map', {
+  crs: L.CRS.Simple, minZoom: -4, maxZoom: 5,
+  zoomSnap: 0.5, zoomDelta: 0.5, zoomControl: false,
+  maxBounds: [[_initCfg.min*1.1, _initCfg.min*1.1], [_initCfg.max*1.1, _initCfg.max*1.1]],
+  maxBoundsViscosity: 0.8,
+});
+L.control.zoom({ position: 'topleft' }).addTo(map);
+const mapTileLayer = L.layerGroup().addTo(map);
+buildMapTiles(_initCfg, mapTileLayer);
+map.fitBounds(_initBounds);
+
+const gridLayer = L.layerGroup();
+
+map.on('mousemove', e => {
+  const cfg = MAPS[currentMapId];
+  const x = e.latlng.lng.toFixed(0), y = (e.latlng.lat * Y_SIGN).toFixed(0);
+  const col = Math.floor((e.latlng.lng - cfg.min) / ((cfg.max - cfg.min) / 16));
+  const row = Math.floor((e.latlng.lat - cfg.min) / ((cfg.max - cfg.min) / 16)) + 1;
+  const colLetter = 'ABCDEFGHIJKLMNOP'[Math.max(0, Math.min(15, col))] || '';
+  const rowNum    = Math.max(1, Math.min(16, row));
+  document.getElementById('coords').textContent = `${colLetter}${rowNum}  X ${x} m   Y ${y} m`;
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP SWITCHER
+// ═══════════════════════════════════════════════════════════════
+
+function switchMap(id) {
+  if (!MAPS[id] || id === currentMapId) return;
+  currentMapId = id;
+  const cfg    = MAPS[id];
+  const bounds = [[cfg.min, cfg.min], [cfg.max, cfg.max]];
+  document.querySelectorAll('.map-tab').forEach(t => t.classList.toggle('active', t.dataset.map === id));
+  buildMapTiles(cfg, mapTileLayer);
+  map.setMaxBounds([[cfg.min*1.1, cfg.min*1.1], [cfg.max*1.1, cfg.max*1.1]]);
+  map.fitBounds(bounds);
+  if (map.hasLayer(gridLayer)) rebuildGrid(cfg.min, cfg.max);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LAYER GROUPS
+// ═══════════════════════════════════════════════════════════════
+
+const playerLayer  = L.layerGroup().addTo(map);
+const enzymeLayer  = L.layerGroup().addTo(map);
+const oilLayer     = L.layerGroup().addTo(map);
+const caveLayer    = L.layerGroup().addTo(map);
+const depositLayer = L.layerGroup();
+
+L.control.layers({}, {
+  'Enzyme Geysers': enzymeLayer,
+  'Oil Geysers':    oilLayer,
+  'Caves':          caveLayer,
+  'Deposits':       depositLayer,
+  'Grid':           gridLayer,
+}, { collapsed: true, position: 'topleft' }).addTo(map);
+
+map.on('overlayadd', e => {
+  if (e.layer === depositLayer)
+    document.getElementById('ore-filter-box').style.display = '';
+  if (e.layer === gridLayer) {
+    const cfg = MAPS[currentMapId]; rebuildGrid(cfg.min, cfg.max);
+  }
+  if (e.layer !== depositLayer) return;
+  if (exoticHighlightOn) map.removeLayer(oreSubLayers.Exotic); // depositLayer will re-add it
+});
+map.on('overlayremove', e => {
+  if (e.layer === depositLayer) {
+    document.getElementById('ore-filter-box').style.display = 'none';
+    if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
+  }
+  if (e.layer === gridLayer) gridLayer.clearLayers();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  PANEL COLLAPSE
+// ═══════════════════════════════════════════════════════════════
+
+const panelBodies = { players: 'player-list', ore: 'ore-filter-wrap', settings: 'settings-body' };
+function togglePanel(key) {
+  const el = document.getElementById(panelBodies[key]);
+  const caret = document.getElementById('caret-' + key);
+  const open = !el.classList.contains('collapsed');
+  el.classList.toggle('collapsed', open);
+  if (caret) caret.textContent = open ? '▶' : '▼';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function toLatLng(x_m, y_m) { return [y_m * Y_SIGN, x_m]; }
+
+function yawToCompass(yaw) {
+  const bearing = ((90 - yaw) % 360 + 360) % 360;
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(bearing / 22.5) % 16];
+}
+
+function remainingLabel(r) {
+  if (r === null || r === undefined) return 'Full';
+  if (r <= 0) return 'Depleted';
+  return 'Partial';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ORE FILTER / LEGEND
+// ═══════════════════════════════════════════════════════════════
+
+const oreEnabled = {};
+Object.keys(ORE_COLOR).forEach(o => oreEnabled[o] = true);
+let exoticHighlightOn = false;
+
+const oreSubLayers = {};
+for (const ore of Object.keys(ORE_COLOR)) oreSubLayers[ore] = L.layerGroup().addTo(depositLayer);
+
+(function buildLegend() {
+  const filterBody = document.getElementById('ore-filter-body');
+  for (const [ore, color] of Object.entries(ORE_COLOR)) {
+    const chip = document.createElement('div');
+    chip.className = 'ore-chip';
+    chip.dataset.ore = ore;
+    chip.innerHTML = `<div class="ore-chip-dot" style="background:${color}"></div>${ore}`;
+    chip.addEventListener('click', () => toggleOre(ore, !oreEnabled[ore]));
+    filterBody.appendChild(chip);
+  }
+})();
+
+function toggleOre(ore, visible) {
+  oreEnabled[ore] = visible;
+  if (visible) { if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]); }
+  else depositLayer.removeLayer(oreSubLayers[ore]);
+  document.querySelectorAll(`.ore-chip[data-ore="${ore}"]`).forEach(c => c.classList.toggle('off', !visible));
+}
+
+function setAllOres(visible) {
+  Object.keys(ORE_COLOR).forEach(ore => {
+    oreEnabled[ore] = visible;
+    if (visible) { if (!depositLayer.hasLayer(oreSubLayers[ore])) depositLayer.addLayer(oreSubLayers[ore]); }
+    else depositLayer.removeLayer(oreSubLayers[ore]);
+  });
+  document.querySelectorAll('.ore-chip').forEach(c => c.classList.toggle('off', !visible));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HIGHLIGHT EXOTICS
+// ═══════════════════════════════════════════════════════════════
+
+document.getElementById('exotic-btn').addEventListener('click', () => {
+  exoticHighlightOn = !exoticHighlightOn;
+  document.getElementById('exotic-btn').classList.toggle('active', exoticHighlightOn);
+  if (!oreSubLayers.Exotic) return;
+  if (!map.hasLayer(depositLayer)) {
+    if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
+    else map.removeLayer(oreSubLayers.Exotic);
+  }
+  oreSubLayers.Exotic.eachLayer(m => {
+    if (exoticHighlightOn) {
+      m._exoticHL = true;
+      m.setStyle({ radius: 8, fillOpacity: 1, opacity: 1, weight: 3, color: '#ff66ff', fillColor: '#cc22cc' });
+      m.bringToFront();
+    } else {
+      m._exoticHL = false;
+      m.setStyle({ radius: 4, fillOpacity: opacity.deposit, opacity: opacity.deposit, weight: 1, color: 'rgba(255,255,255,0.3)', fillColor: '#cc22cc' });
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  DRAW POI LAYERS
+// ═══════════════════════════════════════════════════════════════
+
+function parseCaveClass(ac) {
+  const m = /CaveEntrance_([A-Z]+)_([A-Z]+)/i.exec(ac || '');
+  if (!m) return '';
+  const b = { CF: 'Conifer Forest', AC: 'Arctic', DC: 'Desert' }[m[1].toUpperCase()] || m[1];
+  const s = { SML: 'Small', MED: 'Medium', LRG: 'Large' }[m[2].toUpperCase()] || m[2];
+  return b && s ? `${b} · ${s}` : b || s;
+}
+
+function drawStaticPOIs(data) {
+  enzymeLayer.clearLayers();
+  oilLayer.clearLayers();
+  caveLayer.clearLayers();
+  for (const ore of Object.keys(oreSubLayers)) oreSubLayers[ore].clearLayers();
+
+  (data.geysers?.enzyme || []).forEach(g => {
+    const tip = `<b>Enzyme Geyser</b><br>Horde: ${g.horde || '?'}<br>Completions: ${g.completions ?? 0}<br>Active: ${g.active ? 'yes' : 'no'}`;
+    L.circleMarker(toLatLng(g.x_m, g.y_m), { radius: 7, color: '#16a34a', fillColor: '#22c55e', fillOpacity: opacity.geyser, weight: 2 })
+     .bindTooltip(tip).addTo(enzymeLayer);
+  });
+
+  (data.geysers?.oil || []).forEach(g => {
+    L.circleMarker(toLatLng(g.x_m, g.y_m), { radius: 7, color: '#78350f', fillColor: '#b45309', fillOpacity: opacity.geyser, weight: 2 })
+     .bindTooltip('<b>Oil Geyser</b><br>Active: ' + (g.active ? 'yes' : 'no')).addTo(oilLayer);
+  });
+
+  (data.caves || []).forEach(c => {
+    const info   = parseCaveClass(c.actor_class);
+    const facing = c.yaw != null ? `<br>Facing ${yawToCompass(c.yaw)} (${c.yaw.toFixed(1)}°)` : '';
+    const mined  = c.fully_mined ? '<br><b>⛏ Mined out</b>' : '';
+    const tip    = `<b>Cave Entrance</b>${info ? `<br>${info}` : ''}${mined}${facing}`;
+    L.circleMarker(toLatLng(c.x_m, c.y_m), { radius: 5, color: '#9ca3af', fillColor: '#374151', fillOpacity: opacity.cave, weight: 2 })
+     .bindTooltip(tip).addTo(caveLayer);
+  });
+
+  (data.deposits || []).forEach(d => {
+    const color  = ORE_COLOR[d.ore] || '#888';
+    const status = remainingLabel(d.remaining);
+    const cat    = d.category === 'cave' ? 'Cave' : d.category === 'meta' ? 'Meta' : 'Surface';
+    L.circleMarker(toLatLng(d.x_m, d.y_m), {
+      radius: 4, color: 'rgba(255,255,255,0.3)', fillColor: color,
+      fillOpacity: opacity.deposit, weight: 1,
+    }).bindTooltip(`<b>${d.ore}</b> [${cat}]<br>Status: ${status}`)
+      .addTo(oreSubLayers[d.ore] || depositLayer);
+  });
+
+  if (exoticHighlightOn) {
+    // Re-apply exotic highlight after layer rebuild
+    exoticHighlightOn = false;
+    document.getElementById('exotic-btn').click();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PLAYER LAYER
+// ═══════════════════════════════════════════════════════════════
+
+const playerState = {};
+let colourIdx  = 0;
+let lastPlayers = [];
+
+function getColour(id) {
+  if (!playerState[id]) playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
+  return playerState[id].colour;
+}
+
+function updatePlayers(players) {
+  lastPlayers = players;
+  const online = players.filter(p => p.online);
+  document.getElementById('player-count').textContent = `${online.length} / ${players.length} players`;
+
+  playerLayer.clearLayers();
+  Object.values(playerState).forEach(s => s.marker = null);
+
+  online.forEach(pl => {
+    if (playerState[pl.steam_id]?.hidden) return;
+    const colour = getColour(pl.steam_id);
+    const marker = L.circleMarker(toLatLng(pl.x_m, pl.y_m), {
+      radius: 7, color: colour, fillColor: colour,
+      fillOpacity: opacity.player, weight: 2, opacity: opacity.player,
+    }).addTo(playerLayer);
+    marker.bindTooltip(pl.character_name, { permanent: true, direction: 'top', offset: [0,-10], className: 'player-label' });
+    playerState[pl.steam_id] = playerState[pl.steam_id] || {};
+    playerState[pl.steam_id].marker = marker;
+  });
+
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  players.forEach(pl => {
+    const isHidden  = !!playerState[pl.steam_id]?.hidden;
+    const colour    = getColour(pl.steam_id);
+    const coordTxt  = pl.online ? `X ${pl.x_m} m  Y ${pl.y_m} m  Z ${pl.z_m} m` : 'offline';
+
+    const item     = document.createElement('div');
+    item.className = 'player-item' + (isHidden ? ' hidden-player' : '');
+
+    const row = document.createElement('div');
+    row.className = 'player-item-row';
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'name';
+    nameDiv.innerHTML = `<span class="online-dot" style="background:${colour}"></span>`;
+    nameDiv.appendChild(document.createTextNode(pl.character_name));
+
+    const visBtn = document.createElement('button');
+    visBtn.className = 'player-vis-btn' + (isHidden ? ' off' : '');
+    visBtn.title     = isHidden ? 'Show on map' : 'Hide from map';
+    visBtn.textContent = isHidden ? '○' : '●';
+    visBtn.addEventListener('click', e => { e.stopPropagation(); togglePlayerHidden(pl.steam_id); });
+
+    row.appendChild(nameDiv);
+    row.appendChild(visBtn);
+
+    const coordDiv = document.createElement('div');
+    coordDiv.className   = 'coords-text';
+    coordDiv.textContent = coordTxt;
+
+    item.appendChild(row);
+    item.appendChild(coordDiv);
+
+    if (pl.online && !isHidden && playerState[pl.steam_id]?.marker) {
+      item.addEventListener('click', () => {
+        map.setView(toLatLng(pl.x_m, pl.y_m), 1, { animate: true });
+        playerState[pl.steam_id].marker.openTooltip();
+      });
+    }
+    list.appendChild(item);
+  });
+}
+
+function togglePlayerHidden(steam_id) {
+  if (!playerState[steam_id]) return;
+  playerState[steam_id].hidden = !playerState[steam_id].hidden;
+  updatePlayers(lastPlayers);
+}
+
+function setAllPlayersVisible(visible) {
+  lastPlayers.forEach(pl => {
+    if (!playerState[pl.steam_id]) playerState[pl.steam_id] = { colour: getColour(pl.steam_id) };
+    playerState[pl.steam_id].hidden = !visible;
+  });
+  updatePlayers(lastPlayers);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LIVE PLAYER POLL  (/api/players every POLL_INTERVAL_MS)
+// ═══════════════════════════════════════════════════════════════
+
+async function pollPlayers() {
+  try {
+    const res = await fetch('/api/players');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) {
+      setStatus('err', `Live error: ${data.error}`);
+    } else {
+      updatePlayers(data.players || []);
+      const ago = data.ts ? Math.round(Date.now() / 1000 - data.ts) + 's ago' : '';
+      setStatus('ok', `Live  ${ago}`);
+    }
+  } catch (e) {
+    setStatus('err', `Poll failed: ${e.message}`);
+  }
+}
+
+function setStatus(state, text) {
+  document.getElementById('status-dot').className = state;
+  document.getElementById('status-text').textContent = text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SAVEGAME LIST  (/api/savegames)
+// ═══════════════════════════════════════════════════════════════
+
+let _sgPollTimer = null;
+
+async function fetchSavegames() {
+  try {
+    const res  = await fetch('/api/savegames');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = await res.json();
+
+    const sel     = document.getElementById('sg-select');
+    const current = sel.value;
+    // Rebuild options
+    sel.innerHTML = '<option value="">— None —</option>';
+    list.forEach(sg => {
+      const opt    = document.createElement('option');
+      opt.value    = sg.id;
+      const status = sg.status === 'parsing' ? ' ⟳' : sg.status === 'ready' ? ' ✓' : sg.status === 'error' ? ' ✗' : '';
+      opt.textContent = sg.name + status;
+      if (sg.value === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    // Restore previous selection
+    if (current) sel.value = current;
+  } catch (e) {
+    console.warn('Savegame list error:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SAVEGAME POI LOADER  (/api/poi/<filename>)
+// ═══════════════════════════════════════════════════════════════
+
+let _poiPollTimer = null;
+
+function showParseOverlay(msg) {
+  document.getElementById('parse-overlay').classList.add('active');
+  if (msg) document.getElementById('parse-msg').textContent = msg;
+}
+function hideParseOverlay() {
+  document.getElementById('parse-overlay').classList.remove('active');
+}
+
+async function loadSavegamePOI(filename) {
+  if (!filename) {
+    // Clear POI layers
+    enzymeLayer.clearLayers();
+    oilLayer.clearLayers();
+    caveLayer.clearLayers();
+    for (const sub of Object.values(oreSubLayers)) sub.clearLayers();
+    hideParseOverlay();
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/poi/${encodeURIComponent(filename)}`);
+
+    if (res.status === 202) {
+      // Still parsing — show overlay and poll again
+      showParseOverlay('Server is parsing the savegame. This may take 30–60 seconds on first load.');
+      clearTimeout(_poiPollTimer);
+      _poiPollTimer = setTimeout(() => loadSavegamePOI(filename), PARSE_POLL_MS);
+      return;
+    }
+
+    if (!res.ok) {
+      hideParseOverlay();
+      alert(`Failed to load savegame POI: HTTP ${res.status}`);
+      return;
+    }
+
+    const data = await res.json();
+    hideParseOverlay();
+
+    // Auto-switch map if world detected
+    if (data.world && MAPS[data.world] && data.world !== currentMapId)
+      switchMap(data.world);
+
+    drawStaticPOIs(data);
+
+    const caves    = (data.caves || []).length;
+    const deposits = (data.deposits || []).length;
+    const e        = (data.geysers?.enzyme || []).length;
+    const o        = (data.geysers?.oil || []).length;
+    setStatus('ok', `${caves} caves · ${deposits} deposits · ${e + o} geysers`);
+
+    // Refresh savegame list so status badge updates
+    fetchSavegames();
+
+  } catch (err) {
+    hideParseOverlay();
+    console.error('POI load error:', err);
+  }
+}
+
+function onSavegameSelect(filename) {
+  loadSavegamePOI(filename);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STARTUP
+// ═══════════════════════════════════════════════════════════════
+
+// Initial fetch + periodic refresh
+fetchSavegames();
+setInterval(fetchSavegames, SG_REFRESH_MS);
+
+// Live player poll loop
+(async function playerLoop() {
+  await pollPlayers();
+  setTimeout(playerLoop, POLL_INTERVAL_MS);
+})();
+
+</script>
+</body>
+</html>

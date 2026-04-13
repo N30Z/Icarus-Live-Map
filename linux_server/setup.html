@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Icarus Live Map — Setup & Debug</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0f14;
+      color: #c8d0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ──────────────────────────────────────────────── */
+    #topbar {
+      background: #13161f;
+      border-bottom: 1px solid #2a2f3d;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #topbar h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #7eb8f7;
+    }
+    .nav-link {
+      font-size: 12px;
+      color: #6b7280;
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+    }
+    .nav-link:hover { color: #c8d0e0; border-color: #3a4560; }
+    #save-status {
+      margin-left: auto;
+      font-size: 11px;
+      color: #6b7280;
+      min-width: 140px;
+      text-align: right;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    #content {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card {
+      background: #13161f;
+      border: 1px solid #2a2f3d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid #1e2535;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #4b6fa8;
+    }
+    .card-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #6b7280;
+    }
+    .card-body { padding: 18px; }
+
+    /* ── Form elements ────────────────────────────────────────── */
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .field-row:last-child { margin-bottom: 0; }
+    .field-label {
+      font-size: 12px;
+      color: #9ca3af;
+      width: 160px;
+      flex-shrink: 0;
+    }
+    .field-hint {
+      font-size: 10px;
+      color: #4a5568;
+      margin-top: 3px;
+    }
+    input[type=text], input[type=number], select {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      background: #0d0f14;
+      border: 1px solid #2a2f3d;
+      border-radius: 4px;
+      color: #c8d0e0;
+      outline: none;
+    }
+    input[type=text]:focus, input[type=number]:focus, select:focus {
+      border-color: #4b6fa8;
+    }
+    input[type=number] { width: 120px; flex: none; }
+    .mode-radio { display: flex; gap: 12px; align-items: center; }
+    .mode-radio label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: #c8d0e0;
+      cursor: pointer;
+    }
+    .mode-radio input[type=radio] { accent-color: #4b6fa8; }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 5px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #c8d0e0;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #222840; border-color: #3a4560; }
+    .btn:active { background: #2a3558; }
+    .btn.primary { background: #1e3a5f; border-color: #4b6fa8; color: #7eb8f7; }
+    .btn.primary:hover { background: #264876; }
+    .btn.danger { border-color: #7f1d1d; color: #fca5a5; }
+    .btn.danger:hover { background: #7f1d1d33; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn-row .sep { width: 1px; height: 20px; background: #2a2f3d; }
+
+    /* ── Terminal / output ────────────────────────────────────── */
+    .terminal {
+      background: #060809;
+      border: 1px solid #1e2535;
+      border-radius: 5px;
+      padding: 12px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      color: #a8d8a8;
+      min-height: 80px;
+      max-height: 420px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 12px;
+    }
+    .terminal.empty { color: #2a3a2a; font-style: italic; }
+    .terminal-label {
+      font-size: 10px;
+      color: #4a5568;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+
+    /* ── Process table ────────────────────────────────────────── */
+    .proc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-top: 10px;
+    }
+    .proc-table th {
+      text-align: left;
+      color: #4b6fa8;
+      padding: 4px 8px;
+      border-bottom: 1px solid #1e2535;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .proc-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #1a1f2e;
+      color: #c8d0e0;
+      font-family: monospace;
+    }
+    .proc-table tr:hover td { background: #1a1f2e; }
+    .pid-link {
+      color: #7eb8f7;
+      cursor: pointer;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+    .pid-link:hover { color: #aad4ff; }
+
+    /* ── Pulled saves list ────────────────────────────────────── */
+    .file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      font-size: 11px;
+      color: #c8d0e0;
+      margin: 3px;
+    }
+    .file-chip.ok { border-color: #15803d; color: #86efac; }
+    .file-chip.err { border-color: #7f1d1d; color: #fca5a5; }
+    #pulled-list { margin-top: 10px; }
+
+    /* ── Offset display ───────────────────────────────────────── */
+    .offset-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .offset-row:last-child { margin-bottom: 0; }
+    .offset-name {
+      font-family: monospace;
+      font-size: 12px;
+      color: #a78bfa;
+      width: 180px;
+    }
+    .offset-val {
+      font-family: monospace;
+      font-size: 13px;
+      color: #fbbf24;
+      width: 80px;
+    }
+    input.offset-input {
+      width: 90px;
+      flex: none;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    /* ── Inline status ────────────────────────────────────────── */
+    .inline-status {
+      font-size: 11px;
+      color: #6b7280;
+      margin-left: 8px;
+    }
+    .inline-status.ok  { color: #22c55e; }
+    .inline-status.err { color: #ef4444; }
+    .inline-status.loading { color: #f59e0b; }
+
+    /* ── Separator ────────────────────────────────────────────── */
+    .section-sep {
+      border: none;
+      border-top: 1px solid #1e2535;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>Icarus Live Map — Setup & Debug</h1>
+  <a href="/" class="nav-link">← Live Map</a>
+  <span id="save-status"></span>
+</div>
+
+<div id="content">
+
+  <!-- ══ 1. CONFIGURATION ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Configuration</span>
+      <span class="card-badge">config.json</span>
+    </div>
+    <div class="card-body">
+      <!-- Docker container -->
+      <div class="field-row">
+        <div>
+          <div class="field-label">Docker Container ID</div>
+          <div class="field-hint">Name or short ID — used for all docker commands</div>
+        </div>
+        <input type="text" id="cfg-container" placeholder="e.g. icarus-server or a3f8d2b1" />
+      </div>
+
+      <!-- Prospects path -->
+      <div class="field-row">
+        <div>
+          <div class="field-label">Prospects Path (in container)</div>
+          <div class="field-hint">Where GD.json files live inside the container</div>
+        </div>
+        <input type="text" id="cfg-prospects"
+               placeholder="~/Icarus/Saved/PlayerData/DedicatedServer/Prospects" />
+      </div>
+
+      <hr class="section-sep" />
+
+      <!-- Live mode selector -->
+      <div class="field-row">
+        <div>
+          <div class="field-label">Live Position Mode</div>
+          <div class="field-hint">How player positions are fetched every poll interval</div>
+        </div>
+        <div class="mode-radio" style="flex-wrap:wrap;gap:8px">
+          <label><input type="radio" name="live-mode" value="savegame" id="mode-sg" checked />
+            Savegame (docker exec cat)</label>
+          <label><input type="radio" name="live-mode" value="host_memory" id="mode-host" />
+            <strong style="color:#7eb8f7">Host Memory</strong> (/proc/PID/mem on host)</label>
+          <label><input type="radio" name="live-mode" value="memory" id="mode-mem" />
+            Container Memory (docker exec reader)</label>
+        </div>
+      </div>
+
+      <!-- PID — only relevant for memory modes -->
+      <div class="field-row" id="pid-row">
+        <div>
+          <div class="field-label">PID <span id="pid-source-label" style="color:#4b6fa8;font-size:10px">(host)</span></div>
+          <div class="field-hint" id="pid-hint">Host-visible PID of the IcarusServer process</div>
+        </div>
+        <input type="number" id="cfg-pid" placeholder="e.g. 1337" min="1" />
+      </div>
+
+      <!-- GD.json path (savegame mode) -->
+      <div class="field-row" id="save-path-row">
+        <div>
+          <div class="field-label">Live GD.json path</div>
+          <div class="field-hint">Path inside container (savegame mode) or host mount path</div>
+        </div>
+        <input type="text" id="cfg-save-path"
+               placeholder="/home/icarus/Saved/PlayerData/DedicatedServer/Prospects/GD.json" />
+      </div>
+
+      <!-- Poll interval -->
+      <div class="field-row">
+        <div>
+          <div class="field-label">Poll Interval (s)</div>
+          <div class="field-hint">How often to refresh live player positions</div>
+        </div>
+        <input type="number" id="cfg-poll" placeholder="5" min="1" max="60" />
+      </div>
+
+      <hr class="section-sep" />
+      <div class="btn-row">
+        <button class="btn primary" onclick="saveConfig()">Save Configuration</button>
+        <span class="inline-status" id="cfg-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 2. PROCESS DISCOVERY ═══════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Process Discovery</span>
+      <span class="card-badge">docker exec ps</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+        Find the PID of the Icarus/Wine process inside the container.
+        Click a PID to copy it to the config above.
+      </p>
+      <div class="btn-row">
+        <button class="btn" onclick="findProcesses()">List Processes in Container</button>
+        <span class="inline-status" id="proc-status"></span>
+      </div>
+      <div id="proc-result"></div>
+    </div>
+  </div>
+
+  <!-- ══ 3. PULL SAVEGAMES ══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Pull Savegames</span>
+      <span class="card-badge">docker cp</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+        Copies all <code style="color:#c8d0e0">.json</code> files from the Prospects directory
+        inside the container into the local <code style="color:#c8d0e0">savegames/</code> folder.
+        These files are used for cave, deposit, and geyser overlays on the map.
+      </p>
+      <div class="btn-row">
+        <button class="btn primary" onclick="pullSaves()">Pull from Container</button>
+        <span class="inline-status" id="pull-status"></span>
+      </div>
+      <div id="pulled-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ 4. MEMORY READER ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Memory Reader</span>
+      <span class="card-badge">linux_reader.py</span>
+    </div>
+    <div class="card-body">
+
+      <!-- Test read -->
+      <p style="font-size:12px;color:#6b7280;margin-bottom:10px">
+        Test a single memory read of the Icarus process. The container must have Python 3
+        and the process must be running. Requires <code style="color:#a78bfa">CAP_SYS_PTRACE</code>
+        or the container to run as root.
+      </p>
+      <div class="btn-row">
+        <button class="btn" onclick="testRead()">Test Read (once)</button>
+        <span class="inline-status" id="read-status"></span>
+      </div>
+      <div class="terminal-label">Output</div>
+      <div class="terminal empty" id="read-out">No output yet.</div>
+
+      <hr class="section-sep" />
+
+      <!-- Trace -->
+      <p style="font-size:12px;color:#6b7280;margin-bottom:6px">
+        <strong style="color:#c8d0e0">Offset Trace</strong> — Finds the correct
+        <code style="color:#a78bfa">OFF_PAWN_PRIVATE</code>,
+        <code style="color:#a78bfa">OFF_ROOT_COMPONENT</code>,
+        <code style="color:#a78bfa">OFF_REL_LOCATION</code> offsets by scanning process
+        memory for a known player position. Upload a reference
+        <code style="color:#c8d0e0">players.json</code> first (from parse_players.py output),
+        then run the trace with at least one player online.
+      </p>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn primary" onclick="useRefFromSavegame()" title="Read GD.json from the container right now and use those positions as the reference">
+          Use Savegame Data
+        </button>
+        <button class="btn" onclick="document.getElementById('ref-input').click()">
+          Upload players.json
+        </button>
+        <span class="inline-status" id="ref-status"></span>
+        <input type="file" id="ref-input" accept=".json" style="display:none"
+               onchange="uploadRef(this)" />
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="runTrace()" id="trace-btn">
+          Run --trace
+        </button>
+        <button class="btn danger" onclick="stopTrace()" id="stop-btn" style="display:none">
+          Stop
+        </button>
+        <span class="inline-status" id="trace-status"></span>
+      </div>
+      <div class="terminal-label">Trace Output (stderr + stdout)</div>
+      <div class="terminal empty" id="trace-out">No trace output yet.</div>
+    </div>
+  </div>
+
+  <!-- ══ 5. OFFSETS ═════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">UE4 Offsets</span>
+      <span class="card-badge">offsets.json</span>
+    </div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:14px">
+        Offsets used by the memory reader. Auto-populated after a successful
+        <em>--trace</em> run. Edit manually if you already know the correct values.
+      </p>
+
+      <div class="offset-row">
+        <span class="offset-name">OFF_PAWN_PRIVATE</span>
+        <span class="offset-val" id="disp-pawn">0x3A0</span>
+        <input class="offset-input" type="text" id="in-pawn" value="0x3A0" />
+      </div>
+      <div class="offset-row">
+        <span class="offset-name">OFF_ROOT_COMPONENT</span>
+        <span class="offset-val" id="disp-comp">0x198</span>
+        <input class="offset-input" type="text" id="in-comp" value="0x198" />
+      </div>
+      <div class="offset-row">
+        <span class="offset-name">OFF_REL_LOCATION</span>
+        <span class="offset-val" id="disp-loc">0x11C</span>
+        <input class="offset-input" type="text" id="in-loc" value="0x11C" />
+      </div>
+
+      <hr class="section-sep" />
+      <div class="btn-row">
+        <button class="btn" onclick="loadOffsets()">Reload from server</button>
+        <button class="btn primary" onclick="saveOffsets()">Save Offsets</button>
+        <span class="inline-status" id="offsets-status"></span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#content -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Utilities
+// ═══════════════════════════════════════════════════════════════
+
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'inline-status' + (cls ? ' ' + cls : '');
+}
+
+function appendTerm(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('empty');
+  el.textContent += text;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearTerm(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = '';
+  el.classList.remove('empty');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Load config on start
+// ═══════════════════════════════════════════════════════════════
+
+let _cfg = {};
+
+async function loadCurrentConfig() {
+  try {
+    const res = await fetch('/api/config');
+    _cfg = await res.json();
+
+    const live   = _cfg.live   || {};
+    const docker = _cfg.docker || {};
+
+    const container = docker.container || live.docker_container || '';
+    document.getElementById('cfg-container').value  = container;
+    document.getElementById('cfg-prospects').value  = docker.prospects_path || '';
+    document.getElementById('cfg-pid').value        = live.pid || '';
+    document.getElementById('cfg-save-path').value  = live.host_save_path || live.docker_save_path || '';
+    document.getElementById('cfg-poll').value       = _cfg.poll_interval_players || 5;
+
+    const mode = live.mode || 'savegame';
+    const modeId = { 'memory': 'mode-mem', 'host_memory': 'mode-host', 'savegame': 'mode-sg' }[mode] || 'mode-sg';
+    document.getElementById(modeId).checked = true;
+    updateModeUI(mode);
+  } catch (e) {
+    console.warn('Config load:', e);
+  }
+}
+
+function updateModeUI(mode) {
+  const pidRow   = document.getElementById('pid-row');
+  const pathRow  = document.getElementById('save-path-row');
+  const pidLabel = document.getElementById('pid-source-label');
+  const pidHint  = document.getElementById('pid-hint');
+
+  const memMode = mode === 'memory' || mode === 'host_memory';
+  pidRow.style.opacity  = memMode     ? '1' : '0.5';
+  pathRow.style.opacity = mode === 'savegame' ? '1' : '0.5';
+
+  if (mode === 'host_memory') {
+    pidLabel.textContent = '(host PID)';
+    pidHint.textContent  = 'Host-visible PID — the PID shown by ps aux on the Linux host.';
+  } else if (mode === 'memory') {
+    pidLabel.textContent = '(container PID)';
+    pidHint.textContent  = 'PID of the IcarusServer process inside the Docker container.';
+  } else {
+    pidLabel.textContent = '';
+    pidHint.textContent  = '';
+  }
+}
+
+document.querySelectorAll('input[name=live-mode]').forEach(r =>
+  r.addEventListener('change', () => updateModeUI(r.value))
+);
+
+// ═══════════════════════════════════════════════════════════════
+//  Save config
+// ═══════════════════════════════════════════════════════════════
+
+async function saveConfig() {
+  const mode      = document.querySelector('input[name=live-mode]:checked').value;
+  const container = document.getElementById('cfg-container').value.trim();
+  const pid       = parseInt(document.getElementById('cfg-pid').value) || 0;
+  const savePath  = document.getElementById('cfg-save-path').value.trim();
+  const prospects = document.getElementById('cfg-prospects').value.trim();
+  const poll      = parseInt(document.getElementById('cfg-poll').value) || 5;
+
+  const patch = {
+    poll_interval_players: poll,
+    live: {
+      mode,
+      pid,
+      docker_container: container,
+      docker_save_path: savePath,
+    },
+    docker: {
+      container,
+      prospects_path: prospects,
+    }
+  };
+
+  setStatus('cfg-status', 'Saving…', 'loading');
+  try {
+    const res  = await fetch('/api/config/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setStatus('cfg-status', 'Saved ✓', 'ok');
+      _cfg = data.config;
+    } else {
+      setStatus('cfg-status', 'Error: ' + data.error, 'err');
+    }
+  } catch (e) {
+    setStatus('cfg-status', 'Failed: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Process discovery
+// ═══════════════════════════════════════════════════════════════
+
+async function findProcesses() {
+  setStatus('proc-status', 'Scanning…', 'loading');
+  document.getElementById('proc-result').innerHTML = '';
+  try {
+    const res  = await fetch('/api/debug/processes');
+    const data = await res.json();
+    if (data.error) {
+      setStatus('proc-status', data.error, 'err'); return;
+    }
+    const procs = data.processes || [];
+    setStatus('proc-status', `${procs.length} process(es) found`, 'ok');
+
+    if (!procs.length) {
+      document.getElementById('proc-result').innerHTML =
+        '<p style="font-size:12px;color:#4a5568;margin-top:8px">No Icarus/Wine processes found.</p>';
+      return;
+    }
+
+    const rows = procs.map(pr => {
+      const isHost    = pr.source === 'host';
+      const srcBadge  = isHost
+        ? '<span style="color:#7eb8f7;font-size:9px;margin-left:3px">HOST</span>'
+        : '<span style="color:#6b7280;font-size:9px;margin-left:3px">CTR</span>';
+      const modeArg   = isHost ? 'host_memory' : 'memory';
+      return `
+        <tr>
+          <td>
+            <span class="pid-link" onclick="usePid('${pr.pid}','${modeArg}')">${pr.pid}</span>
+            ${srcBadge}
+          </td>
+          <td>${pr.user}</td>
+          <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${escHtml(pr.cmd)}">${escHtml(pr.cmd)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('proc-result').innerHTML = `
+      <table class="proc-table">
+        <thead><tr><th>PID</th><th>User</th><th>Command</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="font-size:10px;color:#4a5568;margin-top:6px">
+        <span style="color:#7eb8f7">HOST</span> = host-visible PID
+        (use <em>Host Memory</em> mode) &nbsp;·&nbsp;
+        <span style="color:#6b7280">CTR</span> = container PID
+        (use <em>Container Memory</em> mode).
+        Click a PID to apply it.
+      </p>
+    `;
+  } catch (e) {
+    setStatus('proc-status', 'Failed: ' + e.message, 'err');
+  }
+}
+
+function usePid(pid, mode) {
+  document.getElementById('cfg-pid').value = pid;
+  const modeId = mode === 'host_memory' ? 'mode-host' : 'mode-mem';
+  document.getElementById(modeId).checked = true;
+  updateModeUI(mode);
+  setStatus('proc-status', `PID ${pid} → ${mode} mode — save config to apply`, 'ok');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Pull saves
+// ═══════════════════════════════════════════════════════════════
+
+async function pullSaves() {
+  setStatus('pull-status', 'Pulling…', 'loading');
+  document.getElementById('pulled-list').innerHTML = '';
+  try {
+    const res  = await fetch('/api/pull-saves', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) {
+      setStatus('pull-status', 'Error: ' + data.error, 'err'); return;
+    }
+    const pulled = data.pulled || [];
+    const errors = data.errors || [];
+    setStatus('pull-status', `${pulled.length} file(s) pulled`, pulled.length ? 'ok' : '');
+
+    const chips = [
+      ...pulled.map(f => `<span class="file-chip ok">✓ ${escHtml(f)}</span>`),
+      ...errors.map(e => `<span class="file-chip err">✗ ${escHtml(e)}</span>`),
+    ].join('');
+    document.getElementById('pulled-list').innerHTML =
+      chips || '<p style="font-size:12px;color:#4a5568;margin-top:8px">No files found.</p>';
+  } catch (e) {
+    setStatus('pull-status', 'Failed: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Memory reader — test read
+// ═══════════════════════════════════════════════════════════════
+
+async function testRead() {
+  setStatus('read-status', 'Reading…', 'loading');
+  clearTerm('read-out');
+  try {
+    const res  = await fetch('/api/debug/test-read');
+    const data = await res.json();
+    if (data.error) {
+      setStatus('read-status', data.error, 'err');
+      appendTerm('read-out', data.error);
+      return;
+    }
+    const players = (data.data || {}).players || [];
+    setStatus('read-status', `${players.length} player(s) read`, 'ok');
+    if (data.stderr) appendTerm('read-out', data.stderr);
+    appendTerm('read-out', '\n--- JSON output ---\n' + JSON.stringify(data.data, null, 2));
+  } catch (e) {
+    setStatus('read-status', 'Failed: ' + e.message, 'err');
+    appendTerm('read-out', 'Error: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Upload reference players.json
+// ═══════════════════════════════════════════════════════════════
+
+async function uploadRef(input) {
+  const file = input.files[0];
+  if (!file) return;
+  setStatus('ref-status', 'Uploading…', 'loading');
+  try {
+    const body = await file.arrayBuffer();
+    const res  = await fetch('/api/debug/upload-ref', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const dest = data.path || data.container_path || '(saved)';
+      setStatus('ref-status', `Uploaded → ${dest}`, 'ok');
+    } else {
+      setStatus('ref-status', data.error, 'err');
+    }
+  } catch (e) {
+    setStatus('ref-status', 'Failed: ' + e.message, 'err');
+  }
+  input.value = '';
+}
+
+async function useRefFromSavegame() {
+  setStatus('ref-status', 'Reading savegame…', 'loading');
+  try {
+    const res  = await fetch('/api/debug/ref-from-savegame');
+    const data = await res.json();
+    if (data.ok) {
+      const dest = data.path || data.container_path || '(saved)';
+      setStatus('ref-status', `${data.online} online player(s) → ${dest}`, 'ok');
+    } else {
+      setStatus('ref-status', data.error, 'err');
+    }
+  } catch (e) {
+    setStatus('ref-status', 'Failed: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Trace — SSE stream
+// ═══════════════════════════════════════════════════════════════
+
+let _traceEs = null;
+
+async function runTrace() {
+  if (_traceEs) { _traceEs.close(); _traceEs = null; }
+  clearTerm('trace-out');
+  setStatus('trace-status', 'Running…', 'loading');
+  document.getElementById('trace-btn').disabled = true;
+  document.getElementById('stop-btn').style.display = '';
+
+  _traceEs = new EventSource('/api/debug/trace');
+
+  _traceEs.onmessage = e => {
+    if (e.data === '[DONE]') {
+      stopTrace();
+      setStatus('trace-status', 'Complete — check offsets below', 'ok');
+      // Auto-reload offsets after trace finishes
+      setTimeout(loadOffsets, 1000);
+      return;
+    }
+    appendTerm('trace-out', e.data + '\n');
+    // Auto-detect offset lines from trace output and populate inputs
+    const m = e.data.match(/OFF_(\w+)\s*=\s*(0x[0-9a-fA-F]+)/);
+    if (m) applyTracedOffset(m[1], m[2]);
+  };
+
+  _traceEs.onerror = () => {
+    stopTrace();
+    setStatus('trace-status', 'Connection error', 'err');
+  };
+}
+
+function stopTrace() {
+  if (_traceEs) { _traceEs.close(); _traceEs = null; }
+  document.getElementById('trace-btn').disabled = false;
+  document.getElementById('stop-btn').style.display = 'none';
+}
+
+function applyTracedOffset(name, hexVal) {
+  const map = {
+    'PAWN_PRIVATE':   'in-pawn',
+    'ROOT_COMPONENT': 'in-comp',
+    'REL_LOCATION':   'in-loc',
+  };
+  const id = map[name];
+  if (id) {
+    document.getElementById(id).value = hexVal;
+    const dispId = { 'in-pawn': 'disp-pawn', 'in-comp': 'disp-comp', 'in-loc': 'disp-loc' }[id];
+    if (dispId) document.getElementById(dispId).textContent = hexVal;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Offsets
+// ═══════════════════════════════════════════════════════════════
+
+async function loadOffsets() {
+  try {
+    const res  = await fetch('/api/debug/offsets');
+    const data = await res.json();
+    const fmt  = v => '0x' + (typeof v === 'number' ? v.toString(16).toUpperCase() : v);
+    const pawn = fmt(data.OFF_PAWN_PRIVATE);
+    const comp = fmt(data.OFF_ROOT_COMPONENT);
+    const loc  = fmt(data.OFF_REL_LOCATION);
+    document.getElementById('disp-pawn').textContent = pawn;
+    document.getElementById('disp-comp').textContent = comp;
+    document.getElementById('disp-loc').textContent  = loc;
+    document.getElementById('in-pawn').value = pawn;
+    document.getElementById('in-comp').value = comp;
+    document.getElementById('in-loc').value  = loc;
+    setStatus('offsets-status', 'Loaded ✓', 'ok');
+  } catch (e) {
+    setStatus('offsets-status', 'Load failed: ' + e.message, 'err');
+  }
+}
+
+function parseHex(s) {
+  s = s.trim().replace(/^0x/i, '');
+  return parseInt(s, 16);
+}
+
+async function saveOffsets() {
+  const offsets = {
+    OFF_PAWN_PRIVATE:   parseHex(document.getElementById('in-pawn').value),
+    OFF_ROOT_COMPONENT: parseHex(document.getElementById('in-comp').value),
+    OFF_REL_LOCATION:   parseHex(document.getElementById('in-loc').value),
+  };
+  if (Object.values(offsets).some(v => isNaN(v))) {
+    setStatus('offsets-status', 'Invalid hex value', 'err'); return;
+  }
+  setStatus('offsets-status', 'Saving…', 'loading');
+  try {
+    const res  = await fetch('/api/debug/offsets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(offsets),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setStatus('offsets-status', 'Saved ✓', 'ok');
+      // Update display
+      Object.entries(offsets).forEach(([k, v]) => {
+        const hex = '0x' + v.toString(16).toUpperCase();
+        const dispMap = {
+          OFF_PAWN_PRIVATE:   'disp-pawn',
+          OFF_ROOT_COMPONENT: 'disp-comp',
+          OFF_REL_LOCATION:   'disp-loc',
+        };
+        const el = document.getElementById(dispMap[k]);
+        if (el) el.textContent = hex;
+      });
+    } else {
+      setStatus('offsets-status', data.error, 'err');
+    }
+  } catch (e) {
+    setStatus('offsets-status', 'Failed: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════════
+
+loadCurrentConfig();
+loadOffsets();
+</script>
+</body>
+</html>

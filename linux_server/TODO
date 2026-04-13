@@ -1,0 +1,28 @@
+[+] Found module 'IcarusServer-Win64-Shipping.exe' base=0x140000000 size=110,190,592 bytes (8 readable regions, 105 MB)
+[~] Scanning module for GWorld (8 regions, ~110 MB) ...
+  scan 0/110 MB ...
+  scan 67/110 MB ...
+  scan 110/110 MB ... done  
+    4405 hits for 'mov rbx,[rip+rel32]'
+[+] GWorld ptr @ 0x1462ADC90  →  UWorld* @ 0x7FB2F447D850  (vtable 0x145386CC8)
+[i] Offsets: PAWN=0x3a0  COMP=0x198  LOC=0x11c
+[+] GameState @ UWorld+0x38  PlayerArray @ GS+0x90  count=1
+  [Player0]  0.2m  0.5m  0.2m
+
+--- JSON output ---
+{
+  "players": [
+    {
+      "name": "Player0",
+      "online": true,
+      "x_m": 0.15,
+      "y_m": 0.48,
+      "z_m": 0.15
+    }
+  ],
+  "ts": 1776083761.3917809
+}
+
+
+Player Name not correct.
+trace searches wrong Player or need to try all players
