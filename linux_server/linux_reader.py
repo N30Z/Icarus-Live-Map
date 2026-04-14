@@ -47,8 +47,14 @@ def init_mem(pid: int) -> bool:
         return False
 
 
+_ADDR_MAX = (1 << 47) - 1  # 0x7FFFFFFFFFFF — Linux userspace limit
+
+
 def read_bytes(addr: int, size: int) -> bytes:
     if _mem_fd < 0 or size <= 0:
+        return b"\x00" * size
+    # Guard against garbage pointers that would overflow os.pread's C long arg
+    if not (0x1000 <= addr <= _ADDR_MAX):
         return b"\x00" * size
     try:
         raw = os.pread(_mem_fd, size, addr)
@@ -274,8 +280,9 @@ def _is_heap_uobj(addr: int, mod: ModuleInfo) -> bool:
     return mod.base <= vtable < mod.base + mod.size
 
 
-def _find_playerarray(handle_unused, game_state: int, mod: ModuleInfo):
-    """Scan GameState bytes for TArray<APlayerState*>."""
+def _find_playerarray(game_state: int, mod: ModuleInfo):
+    """Scan GameState bytes for TArray<APlayerState*>.
+    Requires ALL counted entries to be valid UObjects (not just the first)."""
     scan_size = 0x600
     raw = read_bytes(game_state, scan_size)
     for off in range(0, scan_size - 16, 8):
@@ -284,33 +291,37 @@ def _find_playerarray(handle_unused, game_state: int, mod: ModuleInfo):
         max_,     = struct.unpack_from("<i", raw, off + 12)
         if count < 1 or count > 32 or max_ < count or max_ > 128:
             continue
-        if not (0x10000 <= data_ptr <= 0x7FFFFFFFFFFF):
+        if not (0x10000 <= data_ptr <= _ADDR_MAX):
             continue
         if mod.base <= data_ptr < mod.base + mod.size:
             continue
-        first = read_ptr(data_ptr)
-        if not _is_heap_uobj(first, mod):
+        # Validate ALL entries so we don't accept garbage arrays
+        valid = sum(1 for i in range(count)
+                    if _is_heap_uobj(read_ptr(data_ptr + i * 8), mod))
+        if valid < count:
             continue
         return data_ptr, count, off
     return 0, 0, 0
 
 
 def _find_gs_playerarray(gworld: int, mod: ModuleInfo):
-    """Scan UWorld for GameState, then scan GameState for PlayerArray."""
-    raw = read_bytes(gworld, 0x300)
-    for off in range(0, 0x300 - 8, 8):
+    """Scan UWorld for GameState, then scan GameState for PlayerArray.
+    If multiple GameState candidates match, prefer the one with more valid entries."""
+    raw = read_bytes(gworld, 0x400)
+    best = (0, 0, 0, 0, 0)   # (gs, arr_data, count, gs_off, arr_off)
+    for off in range(0, 0x400 - 8, 8):
         candidate, = struct.unpack_from("<Q", raw, off)
         if not _is_heap_uobj(candidate, mod):
             continue
-        arr_data, arr_count, arr_off = _find_playerarray(None, candidate, mod)
-        if arr_data:
-            return candidate, arr_data, arr_count, off, arr_off
-    return 0, 0, 0, 0, 0
+        arr_data, arr_count, arr_off = _find_playerarray(candidate, mod)
+        if arr_data and arr_count > best[2]:
+            best = (candidate, arr_data, arr_count, off, arr_off)
+    return best
 
 
 # ── Offsets ───────────────────────────────────────────────────────────────────
 
-OFF_PLAYER_NAME    = 0x368   # APlayerState → FString PlayerName
+OFF_PLAYER_NAME    = 0x368   # APlayerState → FString PlayerName (starting guess; scan if wrong)
 
 DEFAULT_OFFSETS = {
     "OFF_PAWN_PRIVATE":   0x3A0,
@@ -337,6 +348,46 @@ def save_offsets(d: dict):
 
 # ── Read players (live) ───────────────────────────────────────────────────────
 
+# Cache the discovered PlayerName offset so we only scan once per session
+_player_name_off_cache: int = OFF_PLAYER_NAME
+
+
+def _scan_player_name(ps_ptr: int) -> str:
+    """Scan PlayerState memory for an FString that looks like a player name.
+
+    Tries OFF_PLAYER_NAME first, then scans the object looking for an FString
+    whose data pointer is readable and whose content is printable Unicode.
+    Caches the winning offset for all subsequent calls.
+    """
+    global _player_name_off_cache
+
+    # Try cached offset first (fast path)
+    name = read_fstring(ps_ptr + _player_name_off_cache)
+    if name and name.isprintable() and len(name) > 1:
+        return name
+
+    # Slow path: scan object for a plausible FString (data_ptr + len + max)
+    raw = read_bytes(ps_ptr, 0x600)
+    for off in range(0x100, len(raw) - 12, 8):
+        data_ptr, = struct.unpack_from("<Q", raw, off)
+        if not (0x10000 <= data_ptr <= _ADDR_MAX):
+            continue
+        length, = struct.unpack_from("<i", raw, off + 8)
+        if length <= 1 or length > 64:
+            continue
+        str_raw = read_bytes(data_ptr, length * 2)
+        try:
+            s = str_raw.decode("utf-16-le", errors="strict").rstrip("\x00")
+        except Exception:
+            continue
+        if s and s.isprintable() and len(s) > 1 and not s.startswith("/"):
+            print(f"[i] PlayerName found at PS+0x{off:X}: '{s}'", file=sys.stderr)
+            _player_name_off_cache = off   # remember for next call
+            return s
+
+    return ""
+
+
 def read_players(gworld_ptr_addr: int, mod: ModuleInfo, offsets: dict) -> list:
     gworld = read_ptr(gworld_ptr_addr)
     if not gworld:
@@ -354,15 +405,15 @@ def read_players(gworld_ptr_addr: int, mod: ModuleInfo, offsets: dict) -> list:
     players = []
     for i in range(arr_count):
         ps_ptr = read_ptr(arr_data + i * 8)
-        if not ps_ptr:
+        if not _is_heap_uobj(ps_ptr, mod):
             continue
-        name = read_fstring(ps_ptr + OFF_PLAYER_NAME) or f"Player{i}"
+        name = _scan_player_name(ps_ptr) or f"Player{i}"
         pawn = read_ptr(ps_ptr + offsets["OFF_PAWN_PRIVATE"])
-        if not pawn:
+        if not _is_heap_uobj(pawn, mod):
             players.append({"name": name, "online": False})
             continue
         comp = read_ptr(pawn + offsets["OFF_ROOT_COMPONENT"])
-        if not comp:
+        if not _is_heap_uobj(comp, mod):
             players.append({"name": name, "online": False})
             continue
         x, y, z = read_float3(comp + offsets["OFF_REL_LOCATION"])

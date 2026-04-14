@@ -26,3 +26,62 @@
 
 Player Name not correct.
 trace searches wrong Player or need to try all players
+
+[+] Icarus Live Map (Linux)  →  http://0.0.0.0:9090
+    Setup page    : http://0.0.0.0:9090/setup
+    Savegames dir : /home/tim/icarus_map/savegames
+    Docker        : d2d3ad8d0c66
+    Live mode     : host_memory  (/home/container/Icarus/Saved/PlayerData/DedicatedServer/Prospects/GD.json)
+    Player poll   : every 5s
+    Ctrl+C to stop
+
+[!] Player poll error: [+] Found module 'IcarusServer-Win64-Shipping.exe' base=0x140000000 size=110,190,592 bytes (8 readable regions, 105 MB)
+[~] Scanning module for GWorld (8 regions, ~110 MB) ...
+  scan 110/110 MB ... done  
+    4405 hits for 'mov rbx,[rip+rel32]'
+[+] GWorld ptr @ 0x1462ADC90  →  UWorld* @ 0x7FB1A7DB90E0  (vtable 0x145386CC8)
+[i] Offsets: PAWN=0x3a0  COMP=0x198  LOC=0x11c
+[+] GameState @ UWorld+0x30  PlayerArray @ GS+0x98  count=7
+Traceback (most recent call last):
+  File "/home/tim/icarus_map/linux_reader.py", line 593, in <module>
+    main()
+  File "/home/tim/icarus_map/linux_reader.py", line 585, in main
+    once()
+  File "/home/tim/icarus_map/linux_reader.py", line 582, in once
+    players = read_players(gworld_ptr, mod, offsets)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tim/icarus_map/linux_reader.py", line 364, in read_players
+    comp = read_ptr(pawn + offsets["OFF_ROOT_COMPONENT"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tim/icarus_map/linux_reader.py", line 63, in read_ptr
+    raw = read_bytes(addr, 8)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/tim/icarus_map/linux_reader.py", line 54, in read_bytes
+    raw = os.pread(_mem_fd, size, addr)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OverflowError: Python int too large to convert to C long
+[!] Player poll error: [+] Found module 'IcarusServer-Win64-Shipping.exe' base=0x140000000 size=110,190,592 bytes (8 readable regions, 105 MB)
+[~] Scanning module for GWorld (8 regions, ~110 MB) ...
+  scan 110/110 MB ... done  
+    4405 hits for 'mov rbx,[rip+rel32]'
+[+] GWorld ptr @ 0x1462ADC90  →  UWorld* @ 0x7FB1A7DB90E0  (vtable 0x145386CC8)
+[i] Offsets: PAWN=0x3a0  COMP=0x198  LOC=0x11c
+[+] GameState @ UWorld+0x30  PlayerArray @ GS+0x98  count=7
+Traceback (most recent call last):
+  File "/home/tim/icarus_map/linux_reader.py", line 593, in <module>
+    main()
+  File "/home/tim/icarus_map/linux_reader.py", line 585, in main
+    once()
+  File "/home/tim/icarus_map/linux_reader.py", line 582, in once
+    players = read_players(gworld_ptr, mod, offsets)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tim/icarus_map/linux_reader.py", line 364, in read_players
+    comp = read_ptr(pawn + offsets["OFF_ROOT_COMPONENT"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tim/icarus_map/linux_reader.py", line 63, in read_ptr
+    raw = read_bytes(addr, 8)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/tim/icarus_map/linux_reader.py", line 54, in read_bytes
+    raw = os.pread(_mem_fd, size, addr)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OverflowError: Python int too large to convert to C long
