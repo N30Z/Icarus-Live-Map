@@ -17,73 +17,62 @@
       flex-direction: column;
     }
 
-    /* ── Upload overlay ──────────────────────────────────────── */
-    #upload-overlay {
+    /* ── Parsing overlay ────────────────────────────────────────── */
+    #parse-overlay {
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: rgba(13,15,20,.97);
-      display: flex;
+      background: rgba(13,15,20,.85);
+      display: none;
       align-items: center;
       justify-content: center;
+      pointer-events: none;
     }
-    #upload-card {
+    #parse-overlay.active {
+      display: flex;
+    }
+    #parse-card {
       background: #13161f;
       border: 1px solid #2a2f3d;
-      border-radius: 10px;
-      padding: 36px 40px;
-      width: 420px;
-      max-width: 94vw;
-      text-align: center;
-    }
-    #upload-card h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: #7eb8f7;
-      margin-bottom: 8px;
-    }
-    #upload-card p {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 24px;
-    }
-    #upload-card p strong { color: #c8d0e0; }
-    #drop-zone {
-      border: 2px dashed #2a2f3d;
       border-radius: 8px;
-      padding: 32px 20px;
-      cursor: pointer;
-      transition: border-color .2s, background .2s;
-      margin-bottom: 14px;
+      padding: 24px 32px;
+      text-align: center;
+      pointer-events: all;
     }
-    #drop-zone:hover, #drop-zone.drag-over {
-      border-color: #4b6fa8;
-      background: rgba(75,111,168,.07);
+    #parse-card .parse-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #7eb8f7;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
     }
-    #drop-icon { font-size: 28px; margin-bottom: 8px; }
-    #drop-label { font-size: 14px; color: #c8d0e0; margin-bottom: 4px; }
-    #drop-hint { font-size: 11px; color: #4a5568; }
-    #file-input { display: none; }
-    #parse-status {
+    #parse-card .parse-msg {
       font-size: 12px;
       color: #6b7280;
-      min-height: 18px;
-      margin-top: 6px;
     }
-    #parse-status.err { color: #ef4444; }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #2a2f3d;
+      border-top-color: #7eb8f7;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Header ─────────────────────────────────────────────── */
+    /* ── Header ─────────────────────────────────────────────────── */
     #header {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 8px 16px;
+      gap: 10px;
+      padding: 8px 14px;
       background: #13161f;
       border-bottom: 1px solid #2a2f3d;
       flex-shrink: 0;
       z-index: 1000;
+      flex-wrap: wrap;
     }
     #header h1 {
       font-size: 15px;
@@ -91,8 +80,9 @@
       letter-spacing: .06em;
       text-transform: uppercase;
       color: #7eb8f7;
+      white-space: nowrap;
     }
-    #player-count { font-size: 12px; color: #6b7280; }
+    #player-count { font-size: 12px; color: #6b7280; white-space: nowrap; }
 
     .hdr-btn {
       padding: 4px 10px;
@@ -105,10 +95,46 @@
       color: #c8d0e0;
       cursor: pointer;
       transition: background .15s, border-color .15s;
+      white-space: nowrap;
     }
     .hdr-btn:hover { background: #222840; border-color: #3a4560; }
     .hdr-btn.active { background: #cc22cc; border-color: #dd44dd; color: #fff; }
 
+    /* ── Savegame selector ──────────────────────────────────────── */
+    #sg-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    #sg-label {
+      font-size: 11px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+    #sg-select {
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #c8d0e0;
+      cursor: pointer;
+      max-width: 200px;
+    }
+    #sg-select:focus { outline: none; border-color: #4b6fa8; }
+    #sg-reload-btn {
+      padding: 3px 7px;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid #2a2f3d;
+      background: #1a1f2e;
+      color: #6b7280;
+      cursor: pointer;
+    }
+    #sg-reload-btn:hover { color: #c8d0e0; border-color: #3a4560; }
+
+    /* ── Status ──────────────────────────────────────────────────── */
     #status {
       margin-left: auto;
       display: flex;
@@ -122,16 +148,30 @@
       border-radius: 50%;
       background: #4a5568;
       transition: background .3s;
+      flex-shrink: 0;
     }
-    #status-dot.ok     { background: #22c55e; }
-    #status-dot.err    { background: #ef4444; }
+    #status-dot.ok      { background: #22c55e; }
+    #status-dot.err     { background: #ef4444; }
     #status-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-    /* ── Map ─────────────────────────────────────────────────── */
+    /* ── Map tabs ────────────────────────────────────────────────── */
+    #map-tabs { display: flex; gap: 4px; }
+    .map-tab {
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .05em; text-transform: uppercase;
+      border: 1px solid #2a2f3d; border-radius: 4px;
+      background: transparent; color: #6b7280;
+      cursor: pointer; transition: all .15s;
+    }
+    .map-tab:hover { border-color: #4b6fa8; color: #c8d0e0; }
+    .map-tab.active { background: #1e3a5f; border-color: #4b6fa8; color: #7eb8f7; }
+
+    /* ── Map ─────────────────────────────────────────────────────── */
     #map { flex: 1; background: #0d1117; }
 
-    /* ── Player tooltip ──────────────────────────────────────── */
+    /* ── Player tooltip ──────────────────────────────────────────── */
     .leaflet-tooltip.player-label {
       background: rgba(13,15,20,.85);
       border: 1px solid #2a3a55;
@@ -147,7 +187,7 @@
     }
     .leaflet-tooltip.player-label::before { display: none; }
 
-    /* ── Coord bar ───────────────────────────────────────────── */
+    /* ── Coord bar ───────────────────────────────────────────────── */
     #coords {
       position: absolute;
       bottom: 6px; right: 10px;
@@ -155,7 +195,7 @@
       z-index: 999; pointer-events: none;
     }
 
-    /* ── Right panel ─────────────────────────────────────────── */
+    /* ── Right panel ─────────────────────────────────────────────── */
     #right-panel {
       position: absolute;
       top: 48px; right: 10px;
@@ -165,7 +205,6 @@
       gap: 8px;
       z-index: 900;
     }
-
     .panel-box {
       background: rgba(13,15,20,.88);
       border: 1px solid #2a2f3d;
@@ -205,7 +244,6 @@
       margin-right: 5px;
       vertical-align: middle;
     }
-
     .setting-row {
       display: flex;
       align-items: center;
@@ -246,14 +284,9 @@
       padding: 0 8px 8px;
     }
     .ore-filter-actions button {
-      flex: 1;
-      padding: 3px 0;
-      font-size: 10px;
-      border-radius: 4px;
-      border: 1px solid #2a2f3d;
-      background: #1a1f2e;
-      color: #9ca3af;
-      cursor: pointer;
+      flex: 1; padding: 3px 0; font-size: 10px;
+      border-radius: 4px; border: 1px solid #2a2f3d;
+      background: #1a1f2e; color: #9ca3af; cursor: pointer;
     }
     .ore-filter-actions button:hover { background: #222840; color: #c8d0e0; }
 
@@ -268,7 +301,6 @@
     .leaflet-control-layers label { font-size: 12px; color: #c8d0e0; cursor: pointer; }
     .leaflet-control-layers-separator { border-top-color: #2a2f3d; }
 
-    /* ── Player filter ───────────────────────────────────────── */
     .player-filter-btns { display: flex; gap: 4px; }
     .player-filter-btns button {
       padding: 1px 5px; font-size: 9px; border-radius: 3px;
@@ -286,29 +318,6 @@
     .player-vis-btn.off { color: #4a5568; }
     .player-item.hidden-player { opacity: 0.4; }
 
-    /* ── Skip overlay button ─────────────────────────────────── */
-    #skip-overlay-btn {
-      margin-top: 12px; width: 100%;
-      padding: 8px 0; font-size: 12px; background: #1a1f2e;
-      border: 1px solid #2a2f3d; color: #7eb8f7;
-      border-radius: 5px; cursor: pointer; transition: background .15s;
-    }
-    #skip-overlay-btn:hover { background: #222840; border-color: #3a4560; }
-
-    /* ── Map selector tabs ───────────────────────────────────── */
-    #map-tabs { display: flex; gap: 4px; }
-    .map-tab {
-      padding: 3px 10px;
-      font-size: 11px; font-weight: 600;
-      letter-spacing: .05em; text-transform: uppercase;
-      border: 1px solid #2a2f3d; border-radius: 4px;
-      background: transparent; color: #6b7280;
-      cursor: pointer; transition: all .15s;
-    }
-    .map-tab:hover { border-color: #4b6fa8; color: #c8d0e0; }
-    .map-tab.active { background: #1e3a5f; border-color: #4b6fa8; color: #7eb8f7; }
-
-    /* ── Grid labels ─────────────────────────────────────────── */
     .grid-label {
       font-size: 10px;
       color: rgba(200,208,224,0.30);
@@ -317,26 +326,15 @@
       user-select: none;
       white-space: nowrap;
     }
-
   </style>
 </head>
 <body>
 
-<!-- ── Upload overlay ─────────────────────────────────────────── -->
-<div id="upload-overlay">
-  <div id="upload-card">
-    <h1>Icarus Live Map</h1>
-    <p>Upload your <strong>GD.json</strong> savegame file.<br>Everything runs in your browser — nothing is sent to a server.</p>
-    <div id="drop-zone">
-      <div id="drop-icon">⬆</div>
-      <div id="drop-label">Drop file here or click to browse</div>
-      <div id="drop-hint">GD.json from your Icarus dedicated server</div>
-    </div>
-    <input type="file" id="file-input" accept=".json" />
-    <div id="parse-status"></div>
-    <button id="skip-overlay-btn" onclick="document.getElementById('upload-overlay').style.display='none'">
-      View Map
-    </button>
+<!-- ── Parsing overlay (shown while server parses a savegame) ──── -->
+<div id="parse-overlay">
+  <div id="parse-card">
+    <div class="parse-title"><span class="spinner"></span>Parsing savegame…</div>
+    <div class="parse-msg" id="parse-msg">Server is extracting POI data. This may take 30–60 seconds.</div>
   </div>
 </div>
 
@@ -351,10 +349,19 @@
   </div>
   <span id="player-count">– players</span>
   <button class="hdr-btn" id="exotic-btn">✦ Exotics</button>
-  <button class="hdr-btn" id="load-btn" onclick="showUpload()">⬆ Load File</button>
+
+  <!-- Savegame selector for static POI data -->
+  <div id="sg-wrap">
+    <span id="sg-label">Savegame POI:</span>
+    <select id="sg-select" onchange="onSavegameSelect(this.value)">
+      <option value="">— None —</option>
+    </select>
+    <button id="sg-reload-btn" title="Refresh savegame list" onclick="fetchSavegames()">⟳</button>
+  </div>
+
   <div id="status">
     <div id="status-dot" class="loading"></div>
-    <span id="status-text">No file loaded</span>
+    <span id="status-text">Connecting…</span>
   </div>
 </div>
 
@@ -368,13 +375,17 @@
       Players
       <span style="display:flex;align-items:center;gap:6px">
         <span class="player-filter-btns">
-          <button onclick="event.stopPropagation();setAllPlayersVisible(true)" title="Show all players">All</button>
-          <button onclick="event.stopPropagation();setAllPlayersVisible(false)" title="Hide all players">None</button>
+          <button onclick="event.stopPropagation();setAllPlayersVisible(true)" title="Show all">All</button>
+          <button onclick="event.stopPropagation();setAllPlayersVisible(false)" title="Hide all">None</button>
         </span>
         <span class="caret" id="caret-players">▼</span>
       </span>
     </div>
     <div id="player-list" class="panel-body"></div>
+    <div style="padding:6px 12px 8px">
+      <button id="pull-btn" onclick="dockerPull()" style="width:100%;padding:4px 0;font-size:11px;cursor:pointer;background:#1a1f2e;color:#8899bb;border:1px solid #2a3050;border-radius:3px">Pull from Docker</button>
+      <div id="pull-status" style="font-size:10px;color:#556;margin-top:3px;text-align:center"></div>
+    </div>
   </div>
 
   <!-- Ore filter -->
@@ -425,7 +436,6 @@
   </div>
 </div>
 
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -433,20 +443,16 @@
 // ═══════════════════════════════════════════════════════════════
 
 const MAPS = {
-  olympus:    { label: 'Olympus',    tileDir: 'maps/olympus',    tilePrefix: 'VisualMapTex_Terrain_016_OLYHeightMap',     min: -4096, max: 4096 },
-  styx:       { label: 'Styx',       tileDir: 'maps/styx',       tilePrefix: 'VisualMapTex_Terrain_017_STYXHeightMap',    min: -4096, max: 4096 },
-  prometheus: { label: 'Prometheus', tileDir: 'maps/prometheus', tilePrefix: 'VisualMapTex_Terrain_019_DLCheightmap',     min: -4096, max: 4096 },
-  elysium:    { label: 'Elysium',    tileDir: 'maps/elysium',    tilePrefix: 'T_VisualMapTex_Terrain_021_DLC2heightmap',  min: -4096, max: 4096 },
+  olympus:    { label: 'Olympus',    image: 'maps/olympus.jpg',    min: -4096, max: 4096 },
+  styx:       { label: 'Styx',       image: 'maps/styx.jpg',       min: -4096, max: 4096 },
+  prometheus: { label: 'Prometheus', image: 'maps/prometheus.jpg', min: -4096, max: 4096 },
+  elysium:    { label: 'Elysium',    image: 'maps/elysium.jpg',    min: -4096, max: 4096 },
 };
-
-let currentMapId = 'olympus';
-const Y_SIGN = -1;
 
 const PLAYER_COLOURS = [
   '#60a5fa','#34d399','#f87171','#fbbf24',
   '#a78bfa','#fb923c','#38bdf8','#4ade80',
 ];
-
 const ORE_COLOR = {
   Iron:'#a0a0a0', Coal:'#6b6b6b', Copper:'#cd7f32', Gold:'#ffd700',
   Platinum:'#d0d0d0', Titanium:'#4a9ece', Aluminium:'#7fb8d8',
@@ -454,371 +460,12 @@ const ORE_COLOR = {
   Salt:'#f0eee8', Stone:'#966f50', Exotic:'#cc22cc',
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  BINARY PARSER  (ports parse_players.py / server.py to JS)
-// ═══════════════════════════════════════════════════════════════
+const POLL_INTERVAL_MS    = 5000;
+const SG_REFRESH_MS       = 30000;
+const PARSE_POLL_MS       = 3000;  // re-poll /api/poi while server is parsing
 
-function strToBytes(s) { return new TextEncoder().encode(s); }
-
-function readInt32(buf, pos) {
-  return (buf[pos]) | (buf[pos+1] << 8) | (buf[pos+2] << 16) | (buf[pos+3] << 24);
-}
-
-const _f32arr = new Float32Array(1);
-const _i32arr = new Int32Array(_f32arr.buffer);
-function readFloat32(buf, pos) {
-  _i32arr[0] = readInt32(buf, pos);
-  return _f32arr[0];
-}
-
-function readFString(buf, pos) {
-  const len = readInt32(buf, pos); pos += 4;
-  if (len === 0) return { val: '', end: pos };
-  if (len < 0) {
-    const bl = -len * 2;
-    const val = new TextDecoder('utf-16le').decode(buf.subarray(pos, pos + bl)).replace(/\0+$/, '');
-    return { val, end: pos + bl };
-  }
-  const val = new TextDecoder('latin1').decode(buf.subarray(pos, pos + len - 1));
-  return { val, end: pos + len };
-}
-
-function findFirst(buf, pat, start, end) {
-  const lim = Math.min(end !== undefined ? end : buf.length, buf.length) - pat.length;
-  const p0 = pat[0];
-  for (let i = Math.max(0, start); i <= lim; i++) {
-    if (buf[i] !== p0) continue;
-    let ok = true;
-    for (let j = 1; j < pat.length; j++) { if (buf[i+j] !== pat[j]) { ok = false; break; } }
-    if (ok) return i;
-  }
-  return -1;
-}
-
-function findLast(buf, pat, start, end) {
-  const plen = pat.length;
-  for (let i = Math.min(end, buf.length) - plen; i >= start; i--) {
-    let ok = true;
-    for (let j = 0; j < plen; j++) { if (buf[i+j] !== pat[j]) { ok = false; break; } }
-    if (ok) return i;
-  }
-  return -1;
-}
-
-function findAll(buf, pat) {
-  const results = [];
-  let i = 0;
-  while (true) {
-    i = findFirst(buf, pat, i, buf.length);
-    if (i === -1) break;
-    results.push(i);
-    i += pat.length;
-  }
-  return results;
-}
-
-// Read property value. pos = right after the name FString null byte.
-// Mirrors Python _read_prop_val().
-function readPropVal(buf, pos, ptype) {
-  try {
-    const tl = readInt32(buf, pos); pos += 4;
-    pos += tl;       // skip type-name FString body
-    pos += 4;        // payload_size
-    pos += 4;        // array_index
-    if (ptype === 'bool') return buf[pos] !== 0;
-    const hg = buf[pos]; pos++;
-    if (hg) pos += 16;
-    if (ptype === 'str' || ptype === 'name') {
-      const vl = readInt32(buf, pos); pos += 4;
-      if (vl > 0 && vl < 500)
-        return new TextDecoder('latin1').decode(buf.subarray(pos, pos + vl - 1));
-    } else if (ptype === 'float') {
-      return readFloat32(buf, pos);
-    } else if (ptype === 'int') {
-      return readInt32(buf, pos);
-    }
-  } catch(e) {}
-  return null;
-}
-
-function scanProp(buf, pat, start, end, ptype) {
-  const pos = findFirst(buf, pat, start, end);
-  if (pos === -1) return null;
-  return readPropVal(buf, pos + pat.length, ptype);
-}
-
-function rscanProp(buf, pat, before, lookback, ptype) {
-  const pos = findLast(buf, pat, Math.max(0, before - lookback), before);
-  if (pos === -1) return null;
-  return readPropVal(buf, pos + pat.length, ptype);
-}
-
-// Mirrors Python _scan_translation()
-const PAT_TRANS = strToBytes('Translation\x00');
-function scanTranslation(buf, start, end) {
-  const pos = findFirst(buf, PAT_TRANS, start, end);
-  if (pos === -1) return null;
-  try {
-    let p = pos + 12;                        // skip 'Translation\x00'
-    const tl = readInt32(buf, p); p += 4 + tl; // skip type FString
-    const sz = readInt32(buf, p); p += 4;
-    p += 4;                                  // array_index
-    const tl2 = readInt32(buf, p); p += 4 + tl2; // skip struct_name
-    p += 16;                                 // StructGuid
-    const hg = buf[p]; p++;
-    if (hg) p += 16;
-    if (sz === 12) {
-      return [
-        Math.round(readFloat32(buf, p)     / 10) / 10,
-        Math.round(readFloat32(buf, p + 4) / 10) / 10,
-        Math.round(readFloat32(buf, p + 8) / 10) / 10,
-      ];
-    }
-  } catch(e) {}
-  return null;
-}
-
-// Mirrors Python _scan_rotation_yaw()
-const PAT_ROT = strToBytes('Rotation\x00');
-function scanRotationYaw(buf, start, end) {
-  const pos = findFirst(buf, PAT_ROT, start, end);
-  if (pos === -1) return null;
-  try {
-    let p = pos + 9;
-    const tl = readInt32(buf, p); p += 4 + tl;
-    const sz = readInt32(buf, p); p += 4;
-    p += 4;
-    const tl2 = readInt32(buf, p); p += 4 + tl2;
-    p += 16;
-    const hg = buf[p]; p++;
-    if (hg) p += 16;
-    if (sz === 16) {
-      const rx = readFloat32(buf, p), ry = readFloat32(buf, p+4),
-            rz = readFloat32(buf, p+8), rw = readFloat32(buf, p+12);
-      return Math.round(Math.atan2(2*(rw*rz+rx*ry), 1-2*(ry*ry+rz*rz)) * 1800 / Math.PI) / 10;
-    }
-  } catch(e) {}
-  return null;
-}
-
-// ── Pattern constants ────────────────────────────────────────────
-const PAT_CCN       = strToBytes('CachedCharacterName\x00');
-const PAT_USERID    = strToBytes('UserID\x00');
-const PAT_CHRSLOT   = strToBytes('ChrSlot\x00');
-const PAT_PCID      = strToBytes('PlayerCharacterID\x00');
-const PAT_PSRC      = strToBytes('PlayerStateRecorderComponent');
-const PAT_PLAYERID  = strToBytes('PlayerID\x00');
-const PAT_LOCATION  = strToBytes('Location\x00');
-const PAT_RDRC      = strToBytes('ResourceDepositRecorderComponent\x00');
-const PAT_ACN       = strToBytes('ActorClassName\x00');
-const PAT_COMPNAME  = strToBytes('ComponentClassName\x00');
-const PAT_BINDATA   = strToBytes('BinaryData\x00');
-const PAT_RDK       = strToBytes('ResourceDTKey\x00');
-const PAT_RR        = strToBytes('ResourceRemaining\x00');
-const PAT_CERC      = strToBytes('CaveEntranceRecorderComponent\x00');
-const PAT_MINED     = strToBytes('bIsVoxelFullyMined\x00');
-const PAT_EGRC      = strToBytes('EnzymeGeyserRecorderComponent\x00');
-const PAT_OGRC      = strToBytes('OilGeyserRecorderComponent\x00');
-const PAT_ACTIVE    = strToBytes('bDeviceActive\x00');
-const PAT_COMPL     = strToBytes('Completions\x00');
-const PAT_HORDE     = strToBytes('HordeDTKey\x00');
-
-// Mirrors Python extract_players_compat()
-function extractPlayers(buf) {
-  // Build (steamId:slot) → characterName map
-  const nameMap = new Map();
-  for (const cnPos of findAll(buf, PAT_CCN)) {
-    const charName = readPropVal(buf, cnPos + PAT_CCN.length, 'str');
-    if (!charName) continue;
-    const uidPos = findLast(buf, PAT_USERID, Math.max(0, cnPos - 600), cnPos);
-    if (uidPos === -1) continue;
-    const steamId = readPropVal(buf, uidPos + PAT_USERID.length, 'str');
-    if (!steamId) continue;
-    let slot = 0;
-    const slotPos = findFirst(buf, PAT_CHRSLOT, uidPos, cnPos);
-    if (slotPos !== -1) { const sv = readPropVal(buf, slotPos + PAT_CHRSLOT.length, 'int'); if (sv !== null) slot = sv; }
-    nameMap.set(`${steamId}:${slot}`, charName);
-    if (!nameMap.has(`${steamId}:_`)) nameMap.set(`${steamId}:_`, charName); // fallback
-  }
-
-  const players = [], seen = new Set();
-
-  for (const pcidPos of findAll(buf, PAT_PCID)) {
-    const fsStart = pcidPos - 4;
-    if (fsStart < 0) continue;
-    if (readInt32(buf, fsStart) !== 18) continue; // 'PlayerCharacterID\0' = 18 bytes
-    if (findFirst(buf, PAT_PSRC, Math.max(0, pcidPos - 5000), pcidPos) === -1) continue;
-
-    try {
-      let p = fsStart;
-      const nr = readFString(buf, p); p = nr.end;
-      const tr = readFString(buf, p); p = tr.end;
-      const size = readInt32(buf, p); p += 4;
-      p += 4;                                    // array_index
-      const snr = readFString(buf, p); p = snr.end;
-      p += 16;                                   // StructGuid
-      const hg = buf[p]; p++;
-      if (hg) p += 16;
-
-      const endStruct = p + size;
-
-      const pidPos = findFirst(buf, PAT_PLAYERID, p, endStruct);
-      const steamId = pidPos !== -1 ? readPropVal(buf, pidPos + PAT_PLAYERID.length, 'str') : null;
-      if (!steamId || seen.has(steamId)) continue;
-      seen.add(steamId);
-
-      let slot = 0;
-      const slotPos = findFirst(buf, PAT_CHRSLOT, p, endStruct);
-      if (slotPos !== -1) { const sv = readPropVal(buf, slotPos + PAT_CHRSLOT.length, 'int'); if (sv !== null) slot = sv; }
-
-      let location = null;
-      const locPos = findFirst(buf, PAT_LOCATION, endStruct, endStruct + 3000);
-      if (locPos !== -1) {
-        try {
-          let lp = locPos - 4;
-          const lnr = readFString(buf, lp); lp = lnr.end;
-          const ltr = readFString(buf, lp); lp = ltr.end;
-          const lsz = readInt32(buf, lp); lp += 4; lp += 4;
-          const lsnr = readFString(buf, lp); lp = lsnr.end;
-          lp += 16; const lhg = buf[lp]; lp++;
-          if (lhg) lp += 16;
-          if (lnr.val === 'Location' && ltr.val === 'StructProperty' && lsnr.val === 'Vector' && lsz === 12) {
-            location = { x: readFloat32(buf, lp), y: readFloat32(buf, lp+4), z: readFloat32(buf, lp+8) };
-          }
-        } catch(e) {}
-      }
-
-      const charName = nameMap.get(`${steamId}:${slot}`) || nameMap.get(`${steamId}:_`) || '<unknown>';
-      const entry = { steam_id: steamId, character_name: charName, slot, online: location !== null };
-      if (location) {
-        entry.x_m = Math.round(location.x) / 100;
-        entry.y_m = Math.round(location.y) / 100;
-        entry.z_m = Math.round(location.z) / 100;
-      }
-      players.push(entry);
-    } catch(e) {}
-  }
-
-  return players;
-}
-
-// Mirrors Python extract_deposits_scan()
-function extractDeposits(buf) {
-  const deposits = [];
-  let i = 0;
-  while (true) {
-    i = findFirst(buf, PAT_RDRC, i, buf.length);
-    if (i === -1) break;
-
-    const actorClass = rscanProp(buf, PAT_ACN, i, 700, 'name');
-    let end = findFirst(buf, PAT_COMPNAME, i + PAT_RDRC.length, i + 8000);
-    if (end === -1) end = i + 6000;
-
-    const bdPos = findFirst(buf, PAT_BINDATA, i, i + 500);
-    if (bdPos !== -1) {
-      const ore  = scanProp(buf, PAT_RDK, bdPos, end, 'name');
-      const rrRaw = scanProp(buf, PAT_RR, bdPos, end, 'float');
-      const loc  = scanTranslation(buf, bdPos, end);
-      const remaining = (rrRaw !== null && !isNaN(rrRaw)) ? Math.round(rrRaw * 10000) / 10000 : null;
-
-      let category = 'surface';
-      if (actorClass === 'BP_Deep_Mining_Ore_Deposit_Cave_C') category = 'cave';
-      else if (actorClass === 'BP_MetaDeposit_Conifer_C' || actorClass === 'BP_Mission_Meta_Voxel_C') category = 'meta';
-
-      if (loc && ore) deposits.push({ ore, remaining, category, x_m: loc[0], y_m: loc[1], z_m: loc[2] });
-    }
-    i += PAT_RDRC.length;
-  }
-  return deposits;
-}
-
-// Mirrors Python extract_caves_scan()
-function extractCaves(buf) {
-  const caves = [];
-  let i = 0;
-  while (true) {
-    i = findFirst(buf, PAT_CERC, i, buf.length);
-    if (i === -1) break;
-
-    const actorClass = rscanProp(buf, PAT_ACN, i, 700, 'name');
-    let end = findFirst(buf, PAT_COMPNAME, i + PAT_CERC.length, i + 15000);
-    if (end === -1) end = i + 12000;
-
-    const bdPos = findFirst(buf, PAT_BINDATA, i, i + 500);
-    if (bdPos !== -1) {
-      const loc  = scanTranslation(buf, bdPos, end);
-      const yaw  = scanRotationYaw(buf, bdPos, end);
-      const mined = scanProp(buf, PAT_MINED, bdPos, end, 'bool');
-      if (loc) caves.push({ x_m: loc[0], y_m: loc[1], z_m: loc[2], yaw, actor_class: actorClass, fully_mined: !!mined });
-    }
-    i += PAT_CERC.length;
-  }
-  return caves;
-}
-
-// Binary scan equivalent of Python extract_geysers()
-function extractGeysers(buf) {
-  function scan(pat, gtype) {
-    const result = [];
-    let i = 0;
-    while (true) {
-      i = findFirst(buf, pat, i, buf.length);
-      if (i === -1) break;
-
-      let end = findFirst(buf, PAT_COMPNAME, i + pat.length, i + 10000);
-      if (end === -1) end = i + 8000;
-
-      const bdPos = findFirst(buf, PAT_BINDATA, i, i + 500);
-      if (bdPos !== -1) {
-        const loc    = scanTranslation(buf, bdPos, end);
-        const active = scanProp(buf, PAT_ACTIVE, bdPos, end, 'bool');
-        if (loc) {
-          const item = { x_m: loc[0], y_m: loc[1], z_m: loc[2], active: !!active };
-          if (gtype === 'enzyme') {
-            item.completions = scanProp(buf, PAT_COMPL, bdPos, end, 'int') || 0;
-            item.horde = scanProp(buf, PAT_HORDE, bdPos, end, 'name') || '';
-          }
-          result.push(item);
-        }
-      }
-      i += pat.length;
-    }
-    return result;
-  }
-  return { enzyme: scan(PAT_EGRC, 'enzyme'), oil: scan(PAT_OGRC, 'oil') };
-}
-
-// Decompress GD.json and extract all map data
-async function parseGDJson(file) {
-  const text = await file.text();
-  const json = JSON.parse(text);
-  const blobB64 = json?.ProspectBlob?.BinaryBlob;
-  if (!blobB64) throw new Error('File does not contain ProspectBlob.BinaryBlob — is this a GD.json?');
-
-  // Base64 → Uint8Array
-  const raw = atob(blobB64);
-  const compressed = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) compressed[i] = raw.charCodeAt(i);
-
-  // zlib decompress (browser-native, RFC 1950)
-  const ds = new DecompressionStream('deflate');
-  const writer = ds.writable.getWriter();
-  const reader = ds.readable.getReader();
-  writer.write(compressed);
-  writer.close();
-  const chunks = [];
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-  }
-  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-  const binary = new Uint8Array(totalLen);
-  let off = 0;
-  for (const c of chunks) { binary.set(c, off); off += c.length; }
-
-  return binary;
-}
+let currentMapId = 'olympus';
+const Y_SIGN     = -1;
 
 // ═══════════════════════════════════════════════════════════════
 //  OPACITY STATE
@@ -829,12 +476,15 @@ const opacity = { player: 0.85, geyser: 0.75, cave: 0.70, deposit: 0.80 };
 function setOpacity(type, val) {
   opacity[type] = parseFloat(val);
   document.getElementById('val-' + type).textContent = Math.round(val * 100) + '%';
-  if (type === 'player')  playerLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.player, opacity: opacity.player }));
+  if (type === 'player')
+    playerLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.player, opacity: opacity.player }));
   else if (type === 'geyser') {
     enzymeLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
     oilLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
-  } else if (type === 'cave')    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
-  else if (type === 'deposit')   applyDepositOpacity();
+  } else if (type === 'cave')
+    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
+  else if (type === 'deposit')
+    applyDepositOpacity();
 }
 
 function applyDepositOpacity() {
@@ -850,11 +500,9 @@ function applyDepositOpacity() {
 function rebuildGrid(min, max) {
   gridLayer.clearLayers();
   const cols = 16, rows = 16;
-  const cellW = (max - min) / cols;
-  const cellH = (max - min) / rows;
+  const cellW = (max - min) / cols, cellH = (max - min) / rows;
   const letters = 'ABCDEFGHIJKLMNOP';
   const lineStyle = { color: '#7a8aaa', weight: 1, opacity: 0.45, interactive: false };
-
   for (let c = 0; c <= cols; c++) {
     const lng = min + c * cellW;
     L.polyline([[min, lng], [max, lng]], lineStyle).addTo(gridLayer);
@@ -863,112 +511,67 @@ function rebuildGrid(min, max) {
     const lat = min + r * cellH;
     L.polyline([[lat, min], [lat, max]], lineStyle).addTo(gridLayer);
   }
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) {
-      const label = letters[c] + (r + 1);
+  for (let c = 0; c < cols; c++)
+    for (let r = 0; r < rows; r++)
       L.marker([min + r * cellH + cellH * 0.05, min + c * cellW + cellW * 0.05], {
-        icon: L.divIcon({ className: 'grid-label', html: label, iconSize: [0, 0], iconAnchor: [0, 0] }),
+        icon: L.divIcon({ className: 'grid-label', html: letters[c] + (r + 1), iconSize: [0,0], iconAnchor: [0,0] }),
         interactive: false,
       }).addTo(gridLayer);
-    }
-  }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  MAP INIT
+// ═══════════════════════════════════════════════════════════════
+
+const _initCfg    = MAPS[currentMapId];
+const _initBounds = [[_initCfg.min, _initCfg.min], [_initCfg.max, _initCfg.max]];
+
+const map = L.map('map', {
+  crs: L.CRS.Simple,
+  minZoom: -3,
+  maxZoom: 4,
+  zoomSnap: 0.5,
+  zoomDelta: 0.5,
+  maxBounds: [[_initCfg.min * 1.1, _initCfg.min * 1.1], [_initCfg.max * 1.1, _initCfg.max * 1.1]],
+  attributionControl: false,
+});
+
+const mapTileLayer = L.layerGroup().addTo(map);
+const gridLayer    = L.layerGroup();
+
+function buildMapImage(cfg, layerGroup) {
+  layerGroup.clearLayers();
+  const bounds = [[cfg.min, cfg.min], [cfg.max, cfg.max]];
+  L.imageOverlay(cfg.image, bounds).addTo(layerGroup);
+}
+
+buildMapImage(_initCfg, mapTileLayer);
+map.fitBounds(_initBounds);
+
+map.on('mousemove', e => {
+  const cfg = MAPS[currentMapId];
+  const x = e.latlng.lng.toFixed(0), y = (e.latlng.lat * Y_SIGN).toFixed(0);
+  const col = Math.floor((e.latlng.lng - cfg.min) / ((cfg.max - cfg.min) / 16));
+  const row = Math.floor((e.latlng.lat - cfg.min) / ((cfg.max - cfg.min) / 16)) + 1;
+  const colLetter = 'ABCDEFGHIJKLMNOP'[Math.max(0, Math.min(15, col))] || '';
+  const rowNum    = Math.max(1, Math.min(16, row));
+  document.getElementById('coords').textContent = `${colLetter}${rowNum}  X ${x} m   Y ${y} m`;
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  MAP SWITCHER
 // ═══════════════════════════════════════════════════════════════
 
-function switchMap(id, { silentCaves = false } = {}) {
+function switchMap(id) {
   if (!MAPS[id] || id === currentMapId) return;
   currentMapId = id;
-  const cfg = MAPS[id];
+  const cfg    = MAPS[id];
   const bounds = [[cfg.min, cfg.min], [cfg.max, cfg.max]];
-
-  // Update tab styles
   document.querySelectorAll('.map-tab').forEach(t => t.classList.toggle('active', t.dataset.map === id));
-
-  // Swap map tiles + bounds
-  buildMapTiles(cfg, mapTileLayer);
-  map.setMaxBounds([[cfg.min * 1.1, cfg.min * 1.1], [cfg.max * 1.1, cfg.max * 1.1]]);
+  buildMapImage(cfg, mapTileLayer);
+  map.setMaxBounds([[cfg.min*1.1, cfg.min*1.1], [cfg.max*1.1, cfg.max*1.1]]);
   map.fitBounds(bounds);
-
-  // Rebuild grid if it's visible
-  if (map.hasLayer(gridLayer)) rebuildGrid(cfg.min, cfg.max);
-
-  // Clear per-session data layers
-  playerLayer.clearLayers();
-  enzymeLayer.clearLayers();
-  oilLayer.clearLayers();
-  caveLayer.clearLayers();
-  for (const sub of Object.values(oreSubLayers)) sub.clearLayers();
-
-  if (!silentCaves) loadStaticCaves(id);
-
-  document.getElementById('status-dot').className = '';
-  document.getElementById('status-text').textContent = 'No file loaded';
-  document.getElementById('player-count').textContent = '– players';
 }
-
-// ═══════════════════════════════════════════════════════════════
-//  ORE FILTER STATE
-// ═══════════════════════════════════════════════════════════════
-
-const oreEnabled = {};
-Object.keys(ORE_COLOR).forEach(o => oreEnabled[o] = true);
-
-let exoticHighlightOn = false;
-
-// ═══════════════════════════════════════════════════════════════
-//  MAP TILE BUILDER
-// ═══════════════════════════════════════════════════════════════
-
-function buildMapTiles(cfg, layerGroup) {
-  layerGroup.clearLayers();
-  const step = (cfg.max - cfg.min) / 8;
-  for (let x = 0; x < 8; x++) {
-    for (let y = 0; y < 8; y++) {
-      const url = `${cfg.tileDir}/${cfg.tilePrefix}_x${x}_y${y}.png`;
-      const lngMin = cfg.min + x * step;
-      const lngMax = cfg.min + (x + 1) * step;
-      const latMin = cfg.min + y * step;
-      const latMax = cfg.min + (y + 1) * step;
-      L.imageOverlay(url, [[latMin, lngMin], [latMax, lngMax]]).addTo(layerGroup);
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  MAP SETUP
-// ═══════════════════════════════════════════════════════════════
-
-const _initCfg = MAPS[currentMapId];
-const _initBounds = [[_initCfg.min, _initCfg.min], [_initCfg.max, _initCfg.max]];
-
-const map = L.map('map', {
-  crs: L.CRS.Simple,
-  minZoom: -4, maxZoom: 5,
-  zoomSnap: 0.5, zoomDelta: 0.5,
-  zoomControl: false,
-  maxBounds: [[_initCfg.min*1.1, _initCfg.min*1.1],[_initCfg.max*1.1, _initCfg.max*1.1]],
-  maxBoundsViscosity: 0.8,
-});
-
-L.control.zoom({ position: 'topleft' }).addTo(map);
-const mapTileLayer = L.layerGroup().addTo(map);
-buildMapTiles(_initCfg, mapTileLayer);
-map.fitBounds(_initBounds);
-
-const gridLayer = L.layerGroup();
-
-map.on('mousemove', e => {
-  const x = e.latlng.lng.toFixed(0), y = (e.latlng.lat * Y_SIGN).toFixed(0);
-  const cfg = MAPS[currentMapId];
-  const col = Math.floor((e.latlng.lng - cfg.min) / ((cfg.max - cfg.min) / 16));
-  const row = Math.floor((e.latlng.lat - cfg.min) / ((cfg.max - cfg.min) / 16)) + 1;
-  const colLetter = 'ABCDEFGHIJKLMNOP'[Math.max(0, Math.min(15, col))] || '';
-  const rowNum = Math.max(1, Math.min(16, row));
-  document.getElementById('coords').textContent = `${colLetter}${rowNum}  X ${x} m   Y ${y} m`;
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  LAYER GROUPS
@@ -989,26 +592,19 @@ L.control.layers({}, {
 }, { collapsed: true, position: 'topleft' }).addTo(map);
 
 map.on('overlayadd', e => {
+  if (e.layer === depositLayer)
+    document.getElementById('ore-filter-box').style.display = '';
+  if (e.layer === gridLayer) {
+    const cfg = MAPS[currentMapId]; rebuildGrid(cfg.min, cfg.max);
+  }
   if (e.layer !== depositLayer) return;
-  document.getElementById('ore-filter-box').style.display = '';
-  // oreSubLayers.Exotic may already be in map._layers from a direct add (exotic
-  // highlight active while deposit layer was off).  depositLayer.onAdd already
-  // skipped re-adding it (Leaflet deduplicates), so there is no double-render —
-  // just leave it alone.  overlayremove will re-add it if needed.
+  if (exoticHighlightOn) map.removeLayer(oreSubLayers.Exotic); // depositLayer will re-add it
 });
 map.on('overlayremove', e => {
-  if (e.layer !== depositLayer) return;
-  document.getElementById('ore-filter-box').style.display = 'none';
-  // depositLayer left the map — if exotic highlight is on, keep exotics visible
-  // by adding the sublayer directly to the map.
-  if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
-});
-
-// Draw grid on demand when toggled via layer control
-map.on('overlayadd', e => {
-  if (e.layer === gridLayer) { const cfg = MAPS[currentMapId]; rebuildGrid(cfg.min, cfg.max); }
-});
-map.on('overlayremove', e => {
+  if (e.layer === depositLayer) {
+    document.getElementById('ore-filter-box').style.display = 'none';
+    if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
+  }
   if (e.layer === gridLayer) gridLayer.clearLayers();
 });
 
@@ -1046,6 +642,10 @@ function remainingLabel(r) {
 // ═══════════════════════════════════════════════════════════════
 //  ORE FILTER / LEGEND
 // ═══════════════════════════════════════════════════════════════
+
+const oreEnabled = {};
+Object.keys(ORE_COLOR).forEach(o => oreEnabled[o] = true);
+let exoticHighlightOn = false;
 
 const oreSubLayers = {};
 for (const ore of Object.keys(ORE_COLOR)) oreSubLayers[ore] = L.layerGroup().addTo(depositLayer);
@@ -1086,14 +686,10 @@ document.getElementById('exotic-btn').addEventListener('click', () => {
   exoticHighlightOn = !exoticHighlightOn;
   document.getElementById('exotic-btn').classList.toggle('active', exoticHighlightOn);
   if (!oreSubLayers.Exotic) return;
-
-  // When the deposit layer is not on the map, exotics are invisible through their
-  // normal parent chain.  Add / remove the sublayer directly so they always show.
   if (!map.hasLayer(depositLayer)) {
     if (exoticHighlightOn) map.addLayer(oreSubLayers.Exotic);
     else map.removeLayer(oreSubLayers.Exotic);
   }
-
   oreSubLayers.Exotic.eachLayer(m => {
     if (exoticHighlightOn) {
       m._exoticHL = true;
@@ -1107,98 +703,7 @@ document.getElementById('exotic-btn').addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  PLAYER LAYER
-// ═══════════════════════════════════════════════════════════════
-
-const playerState = {};
-let colourIdx = 0;
-let lastPlayers = [];
-
-function getColour(id) {
-  if (!playerState[id]) playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
-  return playerState[id].colour;
-}
-
-function updatePlayers(players) {
-  lastPlayers = players;
-  const online = players.filter(p => p.online);
-  document.getElementById('player-count').textContent = `${online.length} / ${players.length} players`;
-
-  playerLayer.clearLayers();
-  Object.values(playerState).forEach(s => s.marker = null);
-
-  online.forEach(p => {
-    if (playerState[p.steam_id]?.hidden) return;
-    const colour = getColour(p.steam_id);
-    const marker = L.circleMarker(toLatLng(p.x_m, p.y_m), {
-      radius: 7, color: colour, fillColor: colour,
-      fillOpacity: opacity.player, weight: 2, opacity: opacity.player,
-    }).addTo(playerLayer);
-    marker.bindTooltip(p.character_name, { permanent: true, direction: 'top', offset: [0,-10], className: 'player-label' });
-    playerState[p.steam_id] = playerState[p.steam_id] || {};
-    playerState[p.steam_id].marker = marker;
-  });
-
-  const list = document.getElementById('player-list');
-  list.innerHTML = '';
-  players.forEach(p => {
-    const isHidden = !!playerState[p.steam_id]?.hidden;
-    const colour = getColour(p.steam_id);
-    const coordTxt = p.online ? `X ${p.x_m} m  Y ${p.y_m} m  Z ${p.z_m} m` : 'offline';
-
-    const item = document.createElement('div');
-    item.className = 'player-item' + (isHidden ? ' hidden-player' : '');
-
-    const row = document.createElement('div');
-    row.className = 'player-item-row';
-
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'name';
-    nameDiv.innerHTML = `<span class="online-dot" style="background:${colour}"></span>`;
-    nameDiv.appendChild(document.createTextNode(p.character_name));
-
-    const visBtn = document.createElement('button');
-    visBtn.className = 'player-vis-btn' + (isHidden ? ' off' : '');
-    visBtn.title = isHidden ? 'Show on map' : 'Hide from map';
-    visBtn.textContent = isHidden ? '○' : '●';
-    visBtn.addEventListener('click', e => { e.stopPropagation(); togglePlayerHidden(p.steam_id); });
-
-    row.appendChild(nameDiv);
-    row.appendChild(visBtn);
-
-    const coordDiv = document.createElement('div');
-    coordDiv.className = 'coords-text';
-    coordDiv.textContent = coordTxt;
-
-    item.appendChild(row);
-    item.appendChild(coordDiv);
-
-    if (p.online && !isHidden && playerState[p.steam_id]?.marker) {
-      item.addEventListener('click', () => {
-        map.setView(toLatLng(p.x_m, p.y_m), 1, { animate: true });
-        playerState[p.steam_id].marker.openTooltip();
-      });
-    }
-    list.appendChild(item);
-  });
-}
-
-function togglePlayerHidden(steam_id) {
-  if (!playerState[steam_id]) return;
-  playerState[steam_id].hidden = !playerState[steam_id].hidden;
-  updatePlayers(lastPlayers);
-}
-
-function setAllPlayersVisible(visible) {
-  lastPlayers.forEach(p => {
-    if (!playerState[p.steam_id]) playerState[p.steam_id] = { colour: getColour(p.steam_id) };
-    playerState[p.steam_id].hidden = !visible;
-  });
-  updatePlayers(lastPlayers);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  STATIC POI LAYERS
+//  DRAW POI LAYERS
 // ═══════════════════════════════════════════════════════════════
 
 function parseCaveClass(ac) {
@@ -1246,148 +751,286 @@ function drawStaticPOIs(data) {
       .addTo(oreSubLayers[d.ore] || depositLayer);
   });
 
-  if (exoticHighlightOn) document.getElementById('exotic-btn').click();
+  if (exoticHighlightOn) {
+    // Re-apply exotic highlight after layer rebuild
+    exoticHighlightOn = false;
+    document.getElementById('exotic-btn').click();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FILE UPLOAD
+//  PLAYER LAYER
 // ═══════════════════════════════════════════════════════════════
 
-function showUpload() {
-  document.getElementById('upload-overlay').style.display = 'flex';
-  document.getElementById('parse-status').textContent = '';
-  document.getElementById('parse-status').className = '';
+const playerState = {};
+let colourIdx  = 0;
+let lastPlayers = [];
+
+function getColour(id) {
+  if (!playerState[id]) playerState[id] = { colour: PLAYER_COLOURS[colourIdx++ % PLAYER_COLOURS.length] };
+  return playerState[id].colour;
 }
 
-function setParseStatus(msg, isErr) {
-  const el = document.getElementById('parse-status');
-  el.textContent = msg;
-  el.className = isErr ? 'err' : '';
+function playerKey(pl) {
+  // Stable unique key: prefer steam_id, fall back to character_name or memory name
+  return pl.steam_id || pl.character_name || pl.name || ('player_' + pl._idx);
 }
 
-async function handleFile(file) {
-  if (!file) return;
-  setParseStatus('Reading file…');
-  document.getElementById('status-dot').className = 'loading';
-  document.getElementById('status-text').textContent = 'Parsing…';
+function displayName(pl) {
+  return pl.character_name || pl.name || '?';
+}
+
+function updatePlayers(players) {
+  // Attach a stable index so playerKey() always works
+  players.forEach((pl, i) => { pl._idx = i; });
+  lastPlayers = players;
+  const online = players.filter(p => p.online);
+  document.getElementById('player-count').textContent = `${online.length} / ${players.length} players`;
+
+  playerLayer.clearLayers();
+  Object.values(playerState).forEach(s => s.marker = null);
+
+  online.forEach(pl => {
+    const key = playerKey(pl);
+    if (playerState[key]?.hidden) return;
+    const colour = getColour(key);
+    const marker = L.circleMarker(toLatLng(pl.x_m, pl.y_m), {
+      radius: 7, color: colour, fillColor: colour,
+      fillOpacity: opacity.player, weight: 2, opacity: opacity.player,
+    }).addTo(playerLayer);
+    marker.bindTooltip(displayName(pl), { permanent: true, direction: 'top', offset: [0,-10], className: 'player-label' });
+    playerState[key] = playerState[key] || {};
+    playerState[key].marker = marker;
+  });
+
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+  players.forEach(pl => {
+    const key      = playerKey(pl);
+    const isHidden = !!playerState[key]?.hidden;
+    const colour   = getColour(key);
+    const coordTxt = pl.online ? `X ${pl.x_m} m  Y ${pl.y_m} m  Z ${pl.z_m} m` : 'offline';
+
+    const item     = document.createElement('div');
+    item.className = 'player-item' + (isHidden ? ' hidden-player' : '');
+
+    const row = document.createElement('div');
+    row.className = 'player-item-row';
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'name';
+    nameDiv.innerHTML = `<span class="online-dot" style="background:${colour}"></span>`;
+    nameDiv.appendChild(document.createTextNode(displayName(pl)));
+
+    const visBtn = document.createElement('button');
+    visBtn.className   = 'player-vis-btn' + (isHidden ? ' off' : '');
+    visBtn.title       = isHidden ? 'Show on map' : 'Hide from map';
+    visBtn.textContent = isHidden ? '○' : '●';
+    visBtn.addEventListener('click', e => { e.stopPropagation(); togglePlayerHidden(key); });
+
+    row.appendChild(nameDiv);
+    row.appendChild(visBtn);
+
+    const coordDiv = document.createElement('div');
+    coordDiv.className   = 'coords-text';
+    coordDiv.textContent = coordTxt;
+
+    item.appendChild(row);
+    item.appendChild(coordDiv);
+
+    if (pl.online && !isHidden && playerState[key]?.marker) {
+      item.addEventListener('click', () => {
+        map.setView(toLatLng(pl.x_m, pl.y_m), 1, { animate: true });
+        playerState[key].marker.openTooltip();
+      });
+    }
+    list.appendChild(item);
+  });
+}
+
+function togglePlayerHidden(key) {
+  if (!playerState[key]) return;
+  playerState[key].hidden = !playerState[key].hidden;
+  updatePlayers(lastPlayers);
+}
+
+function setAllPlayersVisible(visible) {
+  lastPlayers.forEach(pl => {
+    const key = playerKey(pl);
+    if (!playerState[key]) playerState[key] = { colour: getColour(key) };
+    playerState[key].hidden = !visible;
+  });
+  updatePlayers(lastPlayers);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DOCKER PULL
+// ═══════════════════════════════════════════════════════════════
+
+async function dockerPull() {
+  const btn = document.getElementById('pull-btn');
+  const st  = document.getElementById('pull-status');
+  btn.disabled = true;
+  st.textContent = 'Pulling…';
+  try {
+    const r = await fetch('/api/pull');
+    const d = await r.json();
+    if (d.ok) {
+      st.style.color = '#4a8';
+      st.textContent = `OK (${d.container?.slice(0,12)})`;
+    } else {
+      st.style.color = '#c55';
+      st.textContent = d.error || 'Error';
+    }
+  } catch(e) {
+    st.style.color = '#c55';
+    st.textContent = String(e);
+  }
+  btn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LIVE PLAYER POLL  (/api/players every POLL_INTERVAL_MS)
+// ═══════════════════════════════════════════════════════════════
+
+async function pollPlayers() {
+  try {
+    const res = await fetch('/api/players');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) {
+      setStatus('err', `Live error: ${data.error}`);
+    } else {
+      updatePlayers(data.players || []);
+      const ago = data.ts ? Math.round(Date.now() / 1000 - data.ts) + 's ago' : '';
+      setStatus('ok', `Live  ${ago}`);
+    }
+  } catch (e) {
+    setStatus('err', `Poll failed: ${e.message}`);
+  }
+}
+
+function setStatus(state, text) {
+  document.getElementById('status-dot').className = state;
+  document.getElementById('status-text').textContent = text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SAVEGAME LIST  (/api/savegames)
+// ═══════════════════════════════════════════════════════════════
+
+let _sgPollTimer = null;
+
+async function fetchSavegames() {
+  try {
+    const res  = await fetch('/api/savegames');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = await res.json();
+
+    const sel     = document.getElementById('sg-select');
+    const current = sel.value;
+    // Rebuild options
+    sel.innerHTML = '<option value="">— None —</option>';
+    list.forEach(sg => {
+      const opt    = document.createElement('option');
+      opt.value    = sg.id;
+      const status = sg.status === 'parsing' ? ' ⟳' : sg.status === 'ready' ? ' ✓' : sg.status === 'error' ? ' ✗' : '';
+      opt.textContent = sg.name + status;
+      if (sg.value === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    // Restore previous selection
+    if (current) sel.value = current;
+  } catch (e) {
+    console.warn('Savegame list error:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SAVEGAME POI LOADER  (/api/poi/<filename>)
+// ═══════════════════════════════════════════════════════════════
+
+let _poiPollTimer = null;
+
+function showParseOverlay(msg) {
+  document.getElementById('parse-overlay').classList.add('active');
+  if (msg) document.getElementById('parse-msg').textContent = msg;
+}
+function hideParseOverlay() {
+  document.getElementById('parse-overlay').classList.remove('active');
+}
+
+async function loadSavegamePOI(filename) {
+  if (!filename) {
+    // Clear POI layers
+    enzymeLayer.clearLayers();
+    oilLayer.clearLayers();
+    caveLayer.clearLayers();
+    for (const sub of Object.values(oreSubLayers)) sub.clearLayers();
+    hideParseOverlay();
+    return;
+  }
 
   try {
-    setParseStatus('Decompressing savegame…');
-    const binary = await parseGDJson(file);
+    const res = await fetch(`/api/poi/${encodeURIComponent(filename)}`);
 
-    // Auto-detect and switch map if needed (silentCaves=true — file will supply the data)
-    const detectedMap = detectWorldFromBinary(binary);
-    if (detectedMap && detectedMap !== currentMapId) {
-      switchMap(detectedMap, { silentCaves: true });
-      await tick();
-    }
-
-    setParseStatus('Extracting players…');
-    await tick();
-    const players = extractPlayers(binary);
-
-    setParseStatus('Extracting deposits…');
-    await tick();
-    const deposits = extractDeposits(binary);
-
-    setParseStatus('Extracting caves…');
-    await tick();
-    const caves = extractCaves(binary);
-    if (caves.length > 0) {
-      localStorage.setItem(`icarus_caves_${currentMapId}`, JSON.stringify(caves));
-    }
-
-    setParseStatus('Extracting geysers…');
-    await tick();
-    const geysers = extractGeysers(binary);
-
-    // Render
-    drawStaticPOIs({ geysers, caves, deposits });
-    updatePlayers(players);
-
-    const summary = `${players.filter(p=>p.online).length}/${players.length} players · ${deposits.length} deposits · ${caves.length} caves`;
-    document.getElementById('status-dot').className = 'ok';
-    document.getElementById('status-text').textContent = summary;
-
-    // Hide overlay
-    document.getElementById('upload-overlay').style.display = 'none';
-  } catch(e) {
-    setParseStatus('Error: ' + e.message, true);
-    document.getElementById('status-dot').className = 'err';
-    document.getElementById('status-text').textContent = 'Parse failed';
-    console.error(e);
-  }
-}
-
-function tick() { return new Promise(r => setTimeout(r, 0)); }
-
-// Drop zone
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-
-dropZone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  handleFile(e.dataTransfer.files[0]);
-});
-
-// ── Static cave loader (per-map) ──────────────────────────────
-
-function applyStaticCaves(caves, source) {
-  if (!caves.length) return;
-  drawStaticPOIs({ caves, geysers: {}, deposits: [] });
-  const btn = document.getElementById('skip-overlay-btn');
-  btn.textContent = `View Map  (${caves.length} caves loaded)`;
-  btn.style.display = '';
-  document.getElementById('drop-hint').textContent =
-    `${caves.length} caves loaded from ${source} • load file for players & deposits`;
-  document.getElementById('status-dot').className = 'ok';
-  document.getElementById('status-text').textContent = `${caves.length} caves`;
-}
-
-function loadStaticCaves(mapId) {
-  // Try caves/{mapId}.json, then legacy caves.json (olympus only), then localStorage
-  const urls = [`caves/${mapId}.json`];
-  if (mapId === 'olympus') urls.push('caves.json');
-
-  function tryNext(idx) {
-    if (idx >= urls.length) {
-      try {
-        const key = `icarus_caves_${mapId}`;
-        const raw = localStorage.getItem(key) || (mapId === 'olympus' ? localStorage.getItem('icarus_caves') : null) || '[]';
-        const cached = JSON.parse(raw);
-        if (cached.length) applyStaticCaves(cached, 'browser cache');
-      } catch(e) {}
+    if (res.status === 202) {
+      // Still parsing — show overlay and poll again
+      showParseOverlay('Server is parsing the savegame. This may take 30–60 seconds on first load.');
+      clearTimeout(_poiPollTimer);
+      _poiPollTimer = setTimeout(() => loadSavegamePOI(filename), PARSE_POLL_MS);
       return;
     }
-    fetch(urls[idx])
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(caves => applyStaticCaves(caves, urls[idx]))
-      .catch(() => tryNext(idx + 1));
+
+    if (!res.ok) {
+      hideParseOverlay();
+      alert(`Failed to load savegame POI: HTTP ${res.status}`);
+      return;
+    }
+
+    const data = await res.json();
+    hideParseOverlay();
+
+    // Auto-switch map if world detected
+    if (data.world && MAPS[data.world] && data.world !== currentMapId)
+      switchMap(data.world);
+
+    drawStaticPOIs(data);
+
+    const caves    = (data.caves || []).length;
+    const deposits = (data.deposits || []).length;
+    const e        = (data.geysers?.enzyme || []).length;
+    const o        = (data.geysers?.oil || []).length;
+    setStatus('ok', `${caves} caves · ${deposits} deposits · ${e + o} geysers`);
+
+    // Refresh savegame list so status badge updates
+    fetchSavegames();
+
+  } catch (err) {
+    hideParseOverlay();
+    console.error('POI load error:', err);
   }
-  tryNext(0);
 }
 
-// Scan binary for world name to auto-select the right map
-function detectWorldFromBinary(buf) {
-  for (const id of Object.keys(MAPS)) {
-    const label = MAPS[id].label;
-    const pat = new TextEncoder().encode(label);
-    if (findFirst(buf, pat, 0, buf.length) !== -1) return id;
-  }
-  return null;
+function onSavegameSelect(filename) {
+  loadSavegamePOI(filename);
 }
 
-// Initial load
-loadStaticCaves(currentMapId);
+// ═══════════════════════════════════════════════════════════════
+//  STARTUP
+// ═══════════════════════════════════════════════════════════════
 
-// Show overlay on load
-showUpload();
+// Initial fetch + periodic refresh
+fetchSavegames();
+setInterval(fetchSavegames, SG_REFRESH_MS);
+
+// Live player poll loop
+(async function playerLoop() {
+  await pollPlayers();
+  setTimeout(playerLoop, POLL_INTERVAL_MS);
+})();
+
 </script>
 </body>
 </html>

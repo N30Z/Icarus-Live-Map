@@ -12,17 +12,28 @@ Usage:
 
 import ctypes
 import ctypes.wintypes as wintypes
+import math
+import os
 import struct
 import json
 import time
 import argparse
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+np = None
+try:
+    import numpy as np
+    _NUMPY = True
+except ImportError:
+    _NUMPY = False
 
 def load_offsets(path="offsets.json"):
     try:
         with open(path) as f:
             return json.load(f)
-    except:
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
     
 try:
@@ -85,15 +96,15 @@ OFF_REL_ROTATION    = 0x128   # USceneComponent -> FRotator { f32 Pitch, Yaw, Ro
 #   instr_total_len = Länge der kompletten MOV-Instruktion (RIP-Basis = instr_addr + instr_total_len)
 GWORLD_PATTERNS = [
     # mov rbx, [rip+rel32]  ;  48 8B 1D xx xx xx xx
-    (bytes([0x48, 0x8B, 0x1D]), "xxx", 3, 7),
+    (bytes([0x48, 0x8B, 0x1D]), 3, 7),
     # mov rax, [rip+rel32]  ;  48 8B 05 xx xx xx xx
-    (bytes([0x48, 0x8B, 0x05]), "xxx", 3, 7),
+    (bytes([0x48, 0x8B, 0x05]), 3, 7),
     # mov rcx, [rip+rel32]  ;  48 8B 0D xx xx xx xx
-    (bytes([0x48, 0x8B, 0x0D]), "xxx", 3, 7),
+    (bytes([0x48, 0x8B, 0x0D]), 3, 7),
     # mov rdx, [rip+rel32]  ;  48 8B 15 xx xx xx xx
-    (bytes([0x48, 0x8B, 0x15]), "xxx", 3, 7),
+    (bytes([0x48, 0x8B, 0x15]), 3, 7),
     # mov r8,  [rip+rel32]  ;  4C 8B 05 xx xx xx xx
-    (bytes([0x4C, 0x8B, 0x05]), "xxx", 3, 7),
+    (bytes([0x4C, 0x8B, 0x05]), 3, 7),
 ]
 # Kontextbytes nach der MOV-Instruktion um False-Positives zu filtern:
 # test reg, reg  (48 85 xx) oder cmp reg, 0 (48 83 F8 00)
@@ -137,10 +148,6 @@ def read_float3(handle, address: int):
     raw = read_bytes(handle, address, 12)
     return struct.unpack('<fff', raw)
 
-
-def read_float3_rotator(handle, address: int):
-    raw = read_bytes(handle, address, 12)
-    return struct.unpack('<fff', raw)  # pitch, yaw, roll
 
 
 def read_fstring(handle, address: int) -> str:
@@ -326,7 +333,7 @@ def find_gworld(handle, mod: ModuleInfo) -> int:
     if not regions:
         return 0
 
-    for (prefix, _, rel_off, instr_len) in GWORLD_PATTERNS:
+    for (prefix, rel_off, instr_len) in GWORLD_PATTERNS:
         reg_name = {0x1D: "rbx", 0x05: "rax", 0x0D: "rcx",
                     0x15: "rdx"}.get(prefix[-1], f"r??")
         if prefix[0] == 0x4C:
@@ -358,7 +365,7 @@ def find_gworld(handle, mod: ModuleInfo) -> int:
             if not (mod.base <= vtable < mod.base + mod.size):
                 continue  # kein gültiger vtable-Pointer → kein UObject
 
-            print(f"[+] GWorld @ 0x{instr_addr:X}  →  ptr 0x{candidate:X}  →  UWorld* 0x{val:X}  (vtable 0x{vtable:X})")
+            print(f"[+] GWorld @ 0x{instr_addr:X}  ->  ptr 0x{candidate:X}  ->  UWorld* 0x{val:X}  (vtable 0x{vtable:X})")
             return candidate
 
     return 0
@@ -434,7 +441,6 @@ def _scan_for_location(raw: bytes) -> list:
     Map-Koordinaten sind: mind. ein Wert > 100cm, alle < MAP_LIMIT_CM.
     Gibt Liste von (offset, x, y, z) zurück.
     """
-    import math
     results = []
     for off in range(0, len(raw) - 12, 4):
         x, y, z = struct.unpack_from('<fff', raw, off)
@@ -460,7 +466,6 @@ def find_player_location(handle, ps_ptr: int, mod: ModuleInfo):
 
     Gibt (x_cm, y_cm, z_cm, pawn_off, comp_off, loc_off) zurück oder None.
     """
-    import math
     PS_SCAN   = 0x1200
     PAWN_SCAN = 0x2000
     COMP_SCAN = 0x400
@@ -568,7 +573,7 @@ def read_players(handle, gworld_ptr_addr: int, mod: ModuleInfo, offsets: dict) -
         return []
 
     print(f"[i] UWorld @ 0x{gworld:X} – suche GameState+PlayerArray automatisch...")
-    game_state, arr_data, arr_count, gs_off, arr_off = \
+    game_state, arr_data, arr_count, gs_off, _ = \
         _find_gamestate_and_playerarray(handle, gworld, mod)
 
     if not game_state:
@@ -577,7 +582,12 @@ def read_players(handle, gworld_ptr_addr: int, mod: ModuleInfo, offsets: dict) -
         return []
 
     print(f"[+] GameState @ UWorld+0x{gs_off:X} = 0x{game_state:X}")
-    print(f"[+] PlayerArray @ GameState+0x{arr_off:X}  count={arr_count}")
+    print(f"[+] PlayerArray count={arr_count}")
+
+    off_name  = offsets.get("OFF_PLAYER_NAME",    OFF_PLAYER_NAME)
+    off_pawn  = offsets.get("OFF_PAWN_PRIVATE",   OFF_PAWN_PRIVATE)
+    off_comp  = offsets.get("OFF_ROOT_COMPONENT", OFF_ROOT_COMPONENT)
+    off_loc   = offsets.get("OFF_REL_LOCATION",   OFF_REL_LOCATION)
 
     players = []
     for i in range(arr_count):
@@ -585,19 +595,19 @@ def read_players(handle, gworld_ptr_addr: int, mod: ModuleInfo, offsets: dict) -
         if not ps_ptr:
             continue
 
-        name = read_fstring(handle, ps_ptr + OFF_PLAYER_NAME)
+        name = read_fstring(handle, ps_ptr + off_name)
 
-        pawn = read_ptr(handle, ps_ptr + offsets["OFF_PAWN_PRIVATE"])
+        pawn = read_ptr(handle, ps_ptr + off_pawn)
         if not pawn:
             players.append({"name": name or f"Player{i}", "online": False})
             continue
 
-        comp = read_ptr(handle, pawn + offsets["OFF_ROOT_COMPONENT"])
+        comp = read_ptr(handle, pawn + off_comp)
         if not comp:
             players.append({"name": name or f"Player{i}", "online": False})
             continue
 
-        x, y, z = read_float3(handle, comp + offsets["OFF_REL_LOCATION"])
+        x, y, z = read_float3(handle, comp + off_loc)
 
         players.append({"name": name or f"Player{i}", "online": True, "x_m": x/100, "y_m": y/100, "z_m": z/100})
         print(f"  [{name or f'Player{i}'}] "
@@ -641,240 +651,148 @@ def find_icarus_pid() -> tuple:
     return None, None
 
 
-# ---------------------------------------------------------------------------
-# Offset-Tracer: ermittelt OFF_PAWN_PRIVATE / OFF_ROOT_COMPONENT / OFF_REL_LOCATION
-# ---------------------------------------------------------------------------
 
-def _find_object_base(handle, ptr_addr: int, mod: ModuleInfo) -> int:
-    """
-    Scannt rückwärts ab ptr_addr (8-Byte-Schritte) nach einem UObject-Header.
-    UObject-Header: erstes Qword = vtable (→ Modul), vtable[0] = vfunc (→ Modul).
-    Gibt die Basis-Adresse des Objekts zurück, oder 0 wenn keines gefunden.
-    """
-    for back in range(0, 0x800, 8):
-        candidate = ptr_addr - back
-        if candidate < 0x10000:
-            break
-        vtable = read_ptr(handle, candidate)
-        if not (mod.base <= vtable < mod.base + mod.size):
+def _scan_region_fvector(handle, r_base, r_size, ref_x, ref_y, ref_z, tol_x, tol_y, tol_z):
+    """Scannt eine einzelne Region nach FVector-Tripeln. Läuft in Worker-Threads."""
+    data = read_bytes(handle, r_base, r_size)
+    if not data:
+        return []
+
+    if _NUMPY:
+        assert np is not None
+        arr = np.frombuffer(data, dtype='<f4')
+        n = len(arr) - 2
+        if n <= 0:
+            return []
+        xs = arr[:n]
+        ys = arr[1:n + 1]
+        zs = arr[2:n + 2]
+        with np.errstate(invalid='ignore'):
+            mask = (
+                np.isfinite(xs) & np.isfinite(ys) & np.isfinite(zs) &
+                (np.abs(ys - ref_y) <= tol_y) &
+                (np.abs(xs - ref_x) <= tol_x) &
+                (np.abs(zs - ref_z) <= tol_z)
+            )
+        return [
+            (r_base + int(i) * 4, float(xs[i]), float(ys[i]), float(zs[i]))
+            for i in np.where(mask)[0]
+        ]
+
+    # Fallback: pure Python
+    local = []
+    size = len(data)
+    for i in range(0, size - 12, 4):
+        x, y, z = struct.unpack_from('<fff', data, i)
+        if abs(y - ref_y) > tol_y:
             continue
-        # Vtable-Sanity: vtable[0] muss ebenfalls ins Modul zeigen
-        vfunc0 = read_ptr(handle, vtable)
-        if mod.base <= vfunc0 < mod.base + mod.size:
-            return candidate
-    return 0
+        if abs(x - ref_x) < tol_x and abs(z - ref_z) < tol_z:
+            local.append((r_base + i, x, y, z))
+    return local
 
 
-def trace_pointer_chain(handle, mod: ModuleInfo, gworld_ptr_addr: int,
-                        players_json: str = "players.json") -> None:
+def scan_for_fvector(handle, regions, ref_x, ref_y, ref_z):
+    tol_y = 1000.0
+    tol_x = 50.0
+    tol_z = 50.0
+
+    workers = min(os.cpu_count() or 4, len(regions), 8)
+    results = []
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(
+                _scan_region_fvector,
+                handle, r_base, r_size, ref_x, ref_y, ref_z, tol_x, tol_y, tol_z
+            ): r_base
+            for r_base, r_size in regions
+        }
+        for fut in as_completed(futures):
+            results.extend(fut.result())
+
+    return results
+
+def trace_pointer_chain(handle, mod, gworld_ptr_addr, ref_xyz):
     """
-    Ermittelt die Offset-Kette:
-        PlayerState + OFF_PAWN_PRIVATE    → Pawn
-        Pawn        + OFF_ROOT_COMPONENT  → USceneComponent
-        Component   + OFF_REL_LOCATION   → FVector (X/Y/Z in cm)
-
-    Vorgehen:
-      1. Lädt Referenzkoordinaten aus players_json
-      2. Folgt GWorld → GameState → PlayerState
-      3. Scannt Prozessspeicher nach dem FVector
-      4. Findet Component-Objekt (rückwärts-Vtable-Scan)
-      5. Sucht in PlayerState-Bytes nach Pawn-Pointer, der seinerseits
-         auf das Component zeigt → liefert alle drei Offsets
+    Ermittelt OFF_PAWN_PRIVATE / OFF_ROOT_COMPONENT / OFF_REL_LOCATION
+    durch Top-Down-Traversal: GWorld → GameState → PlayerState → Pawn → Component → FVector.
+    Vergleicht FVectors gegen die Referenzkoordinaten statt den ganzen Heap zu scannen.
     """
-    import os, math
+    ref_x, ref_y, ref_z = ref_xyz
+    TOL = 500.0   # ±5 m Toleranz für Positions-Match
 
-    if not os.path.exists(players_json):
-        print(f"[!] {players_json} nicht gefunden – erst parse_players.py ausführen")
-        return
+    print(f"[~] Referenz: X={ref_x/100:.2f}m  Y={ref_y/100:.2f}m  Z={ref_z/100:.2f}m")
 
-    with open(players_json, encoding="utf-8") as f:
-        data = json.load(f)
-
-    targets = []
-    for p in data.get("players", []):
-        if not p.get("online"):
-            continue
-        x = float(p.get("x") or p.get("x_m", 0) * 100)
-        y = float(p.get("y") or p.get("y_m", 0) * 100)
-        z = float(p.get("z") or p.get("z_m", 0) * 100)
-        targets.append((p.get("character_name") or p.get("name", "?"), x, y, z))
-
-    if not targets:
-        print("[!] Keine Online-Spieler in players.json")
-        return
-
-    # --- GWorld → GameState → PlayerState ---
+    # Step 1: GWorld → UWorld → GameState → PlayerArray
     gworld = read_ptr(handle, gworld_ptr_addr)
-    gs, arr_data, arr_count, gs_off, arr_off = \
-        _find_gamestate_and_playerarray(handle, gworld, mod)
-    if not gs:
-        print("[!] GameState nicht gefunden")
+    if not gworld:
+        print("[!] GWorld ist NULL")
         return
 
-    print(f"[+] GameState @ UWorld+0x{gs_off:X} = 0x{gs:X}")
-    print(f"[+] PlayerArray @ GameState+0x{arr_off:X}  count={arr_count}")
+    print(f"[i] UWorld @ 0x{gworld:X} – suche GameState+PlayerArray ...")
+    game_state, arr_data, arr_count, gs_off, arr_off = \
+        _find_gamestate_and_playerarray(handle, gworld, mod)
 
-    regions = _all_readable_regions(handle)
-    total_mb = sum(s for _, s in regions) // (1024 * 1024)
-    print(f"[i] {len(regions)} lesbare Regions  ~{total_mb} MB")
+    if not game_state:
+        print("[!] GameState/PlayerArray nicht gefunden")
+        dump_heap(handle, gworld, 0x300, "UWorld")
+        return
 
-    TOL = 1000.0
+    print(f"[+] GameState @ UWorld+0x{gs_off:X}  PlayerArray count={arr_count}")
 
-    for pi in range(arr_count):
-        ps_ptr = read_ptr(handle, arr_data + pi * 8)
+    PS_SCAN   = 0x1200
+    PAWN_SCAN = 0x3000
+    COMP_SCAN = 0x400
+
+    # Step 2: PlayerState → Pawn → Component → FVector (top-down, no heap scan)
+    for i in range(arr_count):
+        ps_ptr = read_ptr(handle, arr_data + i * 8)
         if not ps_ptr:
             continue
 
-        ps_name = read_fstring(handle, ps_ptr + OFF_PLAYER_NAME)
-        print(f"\n[+] PlayerState[{pi}] @ 0x{ps_ptr:X}  Name='{ps_name}'")
-
-        name, xf, yf, zf = targets[pi] if pi < len(targets) else targets[0]
-        print(f"[~] Referenz: X={xf/100:.2f}m  Y={yf/100:.2f}m  Z={zf/100:.2f}m")
-
-        # --- Scan Prozessspeicher nach FVector ---
-        print("[~] Scanne Prozessspeicher nach FVector (Y-Anker ±1000 cm) ...")
-        hits_y = _scan_single_float(handle, regions, yf, TOL, 0x100000)
-        good_hits = []
-        for hit_addr, fy in hits_y:
-            ctx = read_bytes(handle, hit_addr - 4, 12)
-            if len(ctx) < 12:
-                continue
-            hx, hy, hz = struct.unpack_from('<fff', ctx)
-            if abs(hx - xf) < TOL and abs(hy - yf) < TOL and abs(hz - zf) < TOL:
-                good_hits.append((hit_addr - 4, hx, hy, hz))
-
-        if not good_hits:
-            print("[!] Kein FVector im Speicher – Spieler nicht online?")
-            continue
-
-        # Genauesten Treffer wählen
-        best = min(good_hits, key=lambda t: abs(t[1]-xf)+abs(t[2]-yf)+abs(t[3]-zf))
-        triplet_addr, hx, hy, hz = best
-        print(f"[+] FVector @ 0x{triplet_addr:X}:  {hx/100:.2f}m  {hy/100:.2f}m  {hz/100:.2f}m")
-
-        # --- Component-Basis (vtable rückwärts) ---
-        component_base = _find_object_base(handle, triplet_addr, mod)
-        if not component_base:
-            # Fallback: aus vorherigem Scan bekannt (+0x80 offset)
-            component_base = 0
-            for back in range(0, 0x200, 8):
-                candidate = triplet_addr - back
-                vtable = read_ptr(handle, candidate)
-                if 0x10000 < vtable < 0x7FFFFFFFFFFF:
-                    component_base = candidate
-                    break
-            print(f"[!] Kein vtable vor FVector, Fallback: component @ 0x{component_base:X}")
-        loc_offset = triplet_addr - component_base
-        print(f"[+] Component @ 0x{component_base:X}  FVector-Offset=+0x{loc_offset:X}")
-
-        # --- 2-Ebenen-Scan in PlayerState ---
-        PS_SCAN   = 0x1200
-        PAWN_SCAN = 0x2000
-        ps_raw = read_bytes(handle, ps_ptr, PS_SCAN)
-        found_chain = False
-
-        for pawn_off in range(0, PS_SCAN - 8, 8):
-            pawn_addr, = struct.unpack_from('<Q', ps_raw, pawn_off)
-            if not _is_heap_uobject(handle, pawn_addr, mod):
-                continue
-            pawn_raw = read_bytes(handle, pawn_addr, PAWN_SCAN)
-            for comp_off in range(0, len(pawn_raw) - 8, 8):
-                v, = struct.unpack_from('<Q', pawn_raw, comp_off)
-                if abs(v - component_base) < 0x10:
-                    print(f"\n  *** OFFSET-KETTE GEFUNDEN ***")
-                    print(f"  PlayerState + 0x{pawn_off:03X} → Pawn @ 0x{pawn_addr:X}")
-                    print(f"  Pawn        + 0x{comp_off:03X} → Component @ 0x{component_base:X}")
-                    print(f"  Component   + 0x{loc_offset:03X} → FVector")
-                    print(f"\n  ┌─ Offsets für memory_reader.py ──────────────────")
-                    print(f"  │  OFF_PAWN_PRIVATE   = 0x{pawn_off:03X}")
-                    print(f"  │  OFF_ROOT_COMPONENT = 0x{comp_off:03X}")
-                    print(f"  │  OFF_REL_LOCATION   = 0x{loc_offset:03X}")
-                    print(f"  └──────────────────────────────────────────────────")
-                    offsets = {
-                        "OFF_PAWN_PRIVATE": pawn_off,
-                        "OFF_ROOT_COMPONENT": comp_off,
-                        "OFF_REL_LOCATION": loc_offset
-                    }
-
-                    with open("offsets.json", "w") as f:
-                        json.dump(offsets, f, indent=2)
-
-                    print("[+] Offsets gespeichert in offsets.json")
-
-                    found_chain = True
-                    break
-            if found_chain:
-                break
-
-        if found_chain:
-            continue
-
-        # --- Fallback: Back-Pointer-Scan auf Component ---
-        print(f"[!] Keine direkte Pawn→Component-Referenz in PS+0..{PS_SCAN:#x} gefunden")
-        print("[~] Fallback: brute-force Pawn → Component scan")
-
-        PS_SCAN = 0x2000
-        PAWN_SCAN = 0x3000
+        name = read_fstring(handle, ps_ptr + OFF_PLAYER_NAME)
+        print(f"[~] PlayerState[{i}] @ 0x{ps_ptr:X}  {name!r}")
 
         ps_raw = read_bytes(handle, ps_ptr, PS_SCAN)
 
         for pawn_off in range(0, PS_SCAN - 8, 8):
             pawn_addr, = struct.unpack_from('<Q', ps_raw, pawn_off)
-
             if not _is_heap_uobject(handle, pawn_addr, mod):
                 continue
 
             pawn_raw = read_bytes(handle, pawn_addr, PAWN_SCAN)
 
             for comp_off in range(0, PAWN_SCAN - 8, 8):
-                v, = struct.unpack_from('<Q', pawn_raw, comp_off)
+                comp_addr, = struct.unpack_from('<Q', pawn_raw, comp_off)
+                if not _is_heap_uobject(handle, comp_addr, mod):
+                    continue
 
-                if abs(v - component_base) < 0x200:
-                    print("\n*** HARD MATCH FOUND ***")
-                    print(f"PlayerState + 0x{pawn_off:X}")
-                    print(f"Pawn + 0x{comp_off:X}")
-                    print(f"Location + 0x{loc_offset:X}")
-                    return
-                
-        print(f"[~] Suche alle Pointer auf Component 0x{component_base:X} im Prozessspeicher ...")
-        lo = component_base
-        hi = component_base + 8
-        back_ptrs = _scan_backref(handle, regions, lo, hi, component_base)
-        print(f"    {len(back_ptrs)} direkte Pointer auf Component gefunden")
+                comp_raw = read_bytes(handle, comp_addr, COMP_SCAN)
 
-        for bptr_addr, _ in back_ptrs[:20]:
-            obj_base = _find_object_base(handle, bptr_addr, mod)
-            if not obj_base:
-                continue
-            internal_off = bptr_addr - obj_base
+                for loc_off, x, y, z in _scan_for_location(comp_raw):
+                    if (abs(x - ref_x) < TOL and
+                            abs(y - ref_y) < TOL and
+                            abs(z - ref_z) < TOL):
+                        print(f"\n*** MATCH FOUND ***")
+                        print(f"  PlayerState  @ 0x{ps_ptr:X}  [{name}]")
+                        print(f"  Pawn         @ 0x{pawn_addr:X}  (+0x{pawn_off:X})")
+                        print(f"  Component    @ 0x{comp_addr:X}  (+0x{comp_off:X})")
+                        print(f"  FVector      @ +0x{loc_off:X}  "
+                              f"({x/100:.2f}m, {y/100:.2f}m, {z/100:.2f}m)")
+                        print(f"\nOFF_PAWN_PRIVATE   = 0x{pawn_off:X}")
+                        print(f"OFF_ROOT_COMPONENT = 0x{comp_off:X}")
+                        print(f"OFF_REL_LOCATION   = 0x{loc_off:X}")
+                        offsets = {
+                            "OFF_PAWN_PRIVATE":   pawn_off,
+                            "OFF_ROOT_COMPONENT": comp_off,
+                            "OFF_REL_LOCATION":   loc_off,
+                        }
+                        with open("offsets.json", "w") as f:
+                            json.dump(offsets, f, indent=2)
+                        print("[+] Offsets gespeichert in offsets.json")
+                        return
 
-            # Steht obj_base irgendwo in PlayerState?
-            for pawn_off in range(0, PS_SCAN - 8, 8):
-                v, = struct.unpack_from('<Q', ps_raw, pawn_off)
-                if v == obj_base:
-                    print(f"\n  *** VIA BACK-POINTER GEFUNDEN ***")
-                    print(f"  PlayerState + 0x{pawn_off:03X} → Objekt @ 0x{obj_base:X}")
-                    print(f"  Objekt      + 0x{internal_off:03X} → Component @ 0x{component_base:X}")
-                    print(f"  Component   + 0x{loc_offset:03X} → FVector")
-                    print(f"\n  ┌─ Offsets für memory_reader.py ──────────────────")
-                    print(f"  │  OFF_PAWN_PRIVATE   = 0x{pawn_off:03X}")
-                    print(f"  │  OFF_ROOT_COMPONENT = 0x{internal_off:03X}")
-                    print(f"  │  OFF_REL_LOCATION   = 0x{loc_offset:03X}")
-                    print(f"  └──────────────────────────────────────────────────")
-                    found_chain = True
-                    break
-            if found_chain:
-                break
-
-        if not found_chain:
-            print(f"[!] Keine Kette gefunden. Manuelle Analyse nötig.")
-            print(f"    Component @ 0x{component_base:X}  FVector @ +0x{loc_offset:X}")
-            if back_ptrs:
-                print(f"    Pointer auf Component bei (erste 5):")
-                for bptr_addr, _ in back_ptrs[:5]:
-                    obj = _find_object_base(handle, bptr_addr, mod)
-                    print(f"      0x{bptr_addr:X}  (Objekt-Basis: 0x{obj:X}  Offset +0x{bptr_addr-obj if obj else 0:X})")
-
+    print("[!] Keine Kette gefunden.")
 
 # ---------------------------------------------------------------------------
 # Position-Scan: sucht bekannte Koordinaten direkt im Prozessspeicher
@@ -982,7 +900,7 @@ def _scan_known_positions(handle, players_json: str = "players.json") -> None:
                 # Suche Pointer die auf [triplet_addr-0x400 .. triplet_addr+0x400] zeigen
                 lo = triplet_addr - 0x400
                 hi = triplet_addr + 0x400
-                back_ptrs = _scan_backref(handle, regions, lo, hi, triplet_addr)
+                back_ptrs = _scan_backref(handle, regions, lo, hi)
                 print(f"  Tripel @ 0x{triplet_addr:X}: {len(back_ptrs)} Back-Pointer")
                 for bptr_addr, bptr_val in back_ptrs[:8]:
                     offset_in_struct = triplet_addr - bptr_val
@@ -1008,7 +926,6 @@ def _raw_scan_needle(handle, regions, needle: bytes) -> list:
 
 
 def _scan_single_float(handle, regions, target: float, tol: float, chunk: int) -> list:
-    import math
     hits = []
     for reg_addr, reg_size in regions:
         off = 0
@@ -1022,19 +939,19 @@ def _scan_single_float(handle, regions, target: float, tol: float, chunk: int) -
     return hits
 
 
-def _scan_backref(handle, regions, lo: int, hi: int, component_base: int) -> list:
-    """Sucht alle 8-Byte-Pointer im Prozessspeicher die auf [lo, hi) zeigen."""
+def _scan_backref(handle, regions, lo: int, hi: int) -> list:
     hits = []
-    CHUNK = 0x100000
-    for reg_addr, reg_size in regions:
-        off = 0
-        while off < reg_size:
-            raw = read_bytes(handle, reg_addr + off, min(CHUNK, reg_size - off))
-            for pi in range(0, len(raw) - 8, 8):
-                v, = struct.unpack_from('<Q', raw, pi)
-                if (component_base - 0x100) <= v <= (component_base + 0x100):
-                    hits.append((reg_addr + off + pi, v))
-            off += CHUNK - 8
+    for r_base, r_size in regions:
+        data = read_bytes(handle, r_base, r_size)
+        if not data:
+            continue
+
+        for i in range(0, len(data) - 8, 8):
+            v, = struct.unpack_from('<Q', data, i)
+
+            if (lo - 0x100) <= v <= (hi + 0x100):
+                hits.append((r_base + i, v))
+
     return hits
 
 
@@ -1087,7 +1004,7 @@ def main():
             list_icarus_processes()
             sys.exit(1)
 
-    if not pid:
+    if not pid or not proc_name:
         print(f"[!] Kein Icarus-Prozess gefunden. Gesuchte Namen: {PROCESS_NAMES}")
         print("[i] Laufende Icarus-Prozesse:")
         list_icarus_processes()
@@ -1096,57 +1013,75 @@ def main():
     print(f"[+] Prozess: {proc_name}  PID: {pid}")
 
     handle = open_process(pid)
-    mod = get_module_info(pid, proc_name)
-    offsets = load_offsets()
+    try:
+        mod = get_module_info(pid, proc_name)
+        offsets = load_offsets() or {}
 
-    if not offsets and not args.trace:
-        print("[!] Keine Offsets gefunden – bitte einmal mit --trace ausführen")
-        return
-    
-    if not mod:
-        sys.exit(f"[!] Modul-Info für {proc_name} nicht gefunden")
-    print(f"[+] Modul-Basis: 0x{mod.base:X}  Größe: {mod.size//1024//1024} MB")
+        if not offsets and not args.trace:
+            print("[!] Keine Offsets gefunden – bitte einmal mit --trace ausführen")
+            return
 
-    if args.scan:
-        _scan_known_positions(handle, args.players_json)
+        if not mod:
+            sys.exit(f"[!] Modul-Info für {proc_name} nicht gefunden")
+        print(f"[+] Modul-Basis: 0x{mod.base:X}  Größe: {mod.size//1024//1024} MB")
+
+        if args.scan:
+            _scan_known_positions(handle, args.players_json)
+            return
+
+        gworld_ptr_addr = find_gworld(handle, mod)
+        if not gworld_ptr_addr:
+            sys.exit("[!] GWorld nicht gefunden – Pattern passt nicht für diese Build-Version")
+
+        if args.trace:
+            if not os.path.exists(args.players_json):
+                sys.exit(f"[!] {args.players_json} nicht gefunden – erst parse_players.py ausführen")
+
+            with open(args.players_json, encoding="utf-8") as f:
+                player_data = json.load(f)
+
+            ref_xyz = None
+            for p in player_data.get("players", []):
+                if p.get("online"):
+                    x = float(p.get("x") or p.get("x_m", 0) * 100)
+                    y = float(p.get("y") or p.get("y_m", 0) * 100)
+                    z = float(p.get("z") or p.get("z_m", 0) * 100)
+                    ref_xyz = (x, y, z)
+                    break
+
+            if not ref_xyz:
+                sys.exit("[!] Keine Online-Spieler in players.json gefunden")
+
+            trace_pointer_chain(handle, mod, gworld_ptr_addr, ref_xyz)
+            return
+
+        print(f"[+] Schreibe nach '{args.output}'" +
+              (f" alle {args.loop}s" if args.loop else " (einmalig)"))
+
+        while True:
+            players = read_players(handle, gworld_ptr_addr, mod, offsets)
+
+            output = {
+                "timestamp":    time.time(),
+                "player_count": len([p for p in players if p.get("online")]),
+                "players":      players,
+            }
+
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(output, f, indent=2, ensure_ascii=False)
+
+            for p in players:
+                if p.get("online"):
+                    print(f"  [{p['name']}] {p['x_m']}m, {p['y_m']}m, {p['z_m']}m")
+                else:
+                    print(f"  [{p['name']}] offline")
+
+            if not args.loop:
+                break
+            time.sleep(args.loop)
+
+    finally:
         kernel32.CloseHandle(handle)
-        return
-
-    gworld_ptr_addr = find_gworld(handle, mod)
-    if not gworld_ptr_addr:
-        sys.exit("[!] GWorld nicht gefunden – Pattern passt nicht für diese Build-Version")
-
-    if args.trace:
-        trace_pointer_chain(handle, mod, gworld_ptr_addr, args.players_json)
-        kernel32.CloseHandle(handle)
-        return
-
-    print(f"[+] Schreibe nach '{args.output}'" +
-          (f" alle {args.loop}s" if args.loop else " (einmalig)"))
-
-    while True:
-        players = read_players(handle, gworld_ptr_addr, mod, offsets)
-
-        output = {
-            "timestamp":    time.time(),
-            "player_count": len([p for p in players if p.get("online")]),
-            "players":      players,
-        }
-
-        with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(output, f, indent=2, ensure_ascii=False)
-
-        for p in players:
-            if p.get("online"):
-                print(f"  [{p['name']}] {p['x_m']}m, {p['y_m']}m, {p['z_m']}m")
-            else:
-                print(f"  [{p['name']}] offline")
-
-        if not args.loop:
-            break
-        time.sleep(args.loop)
-
-    kernel32.CloseHandle(handle)
 
 
 if __name__ == "__main__":

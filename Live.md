@@ -23,21 +23,21 @@ Dedicated Server (`IcarusServer-Win64-Shipping.exe`) hat kein EAC → funktionie
 
 ---
 
-## Verifiziertе Offsets
+## Verifizierte Offsets
 
 ```python
-OFF_GSTATE      = 0x038   # UWorld       → AGameStateBase*   ✓ verifiziert
-OFF_PLAYERARRAY = 0x090   # GameState    → TArray<APlayerState*>  ✓ verifiziert
+OFF_GSTATE      = 0x038   # UWorld       → AGameStateBase*        ✓ verifiziert
+OFF_PLAYERARRAY = 0x090   # GameState    → TArray<APlayerState*>   ✓ verifiziert
 ```
 
 ### Noch nicht verifiziert (Schätzwerte aus UE4-Standard)
 ```python
-OFF_PAWN_PRIVATE   = 0x3A0   # APlayerState → APawn*           ✗ falsch/unbekannt
-OFF_ROOT_COMPONENT = 0x198   # AActor       → USceneComponent* ✗ falsch/unbekannt
-OFF_REL_LOCATION   = 0x11C   # USceneComponent → FVector (XYZ) ✗ falsch/unbekannt
+OFF_PAWN_PRIVATE   = 0x3A0   # APlayerState → APawn*           ✗ unbekannt
+OFF_ROOT_COMPONENT = 0x198   # AActor       → USceneComponent* ✗ unbekannt
+OFF_REL_LOCATION   = 0x11C   # USceneComponent → FVector (XYZ) ✗ unbekannt
 ```
 
-**→ `--trace` Mode ermittelt diese drei Offsets automatisch.**
+**→ `--trace` ermittelt diese drei Offsets automatisch und schreibt sie in `offsets.json`.**
 
 ---
 
@@ -60,58 +60,67 @@ Validierung: Zieladresse ist Heap-Objekt mit vtable → Modul.
 
 ---
 
-## Scan-Ergebnisse (Stand: letzter bekannter Serverstand)
+## Aktueller Laufzeitstatus (2026-04-11)
 
-Referenzposition aus `players.json` (parse_players.py, Lokal.json):
+### GWorld — verifiziert ✓
+
+```
+GWorld @ 0x7FF664F7116D  →  ptr 0x7FF66A98DC90  →  UWorld* 0x1C419D86930  (vtable 0x7FF669A66CC8)
+```
+
+| Eigenschaft | Wert |
+|---|---|
+| Modul-Basis | `0x7FF6646E0000` |
+| Modulgröße | 105 MB |
+| Lesbare Regions | 81 (105 MB) |
+| GWorld-Pointer (static) | `0x7FF66A98DC90` |
+| UWorld* | `0x1C419D86930` |
+
+### `--trace` — ausstehend
+
+Referenzposition aus `players.json`:
 
 | Spieler | X | Y | Z |
 |---|---|---|---|
-| PETER | 161.15 m | -230.83 m | -104.13 m |
+| PETER | 161.15 m | −230.83 m | −104.13 m |
 
-### Gefundene FVector-Adressen im Prozessspeicher
+**Letzter Lauf:** FVector nicht gefunden — `--trace` scannte nur die 105 MB des `.exe`-Images
+statt des Heap-Speichers. **Bug behoben** (siehe unten). Nächster Lauf sollte funktionieren.
 
-Bester Treffer (genaueste Übereinstimmung):
+---
+
+## Scan-Ergebnisse (manueller `--scan`, veraltet)
+
+Bester Treffer aus früherem `--scan`-Lauf (Spieler hat sich seitdem bewegt):
 
 | Adresse | X | Y | Z | Abweichung |
 |---|---|---|---|---|
-| `0x5DC5570BA0` | 161.15 m | -230.83 m | -104.07 m | ΔZ ≈ 0.06 m |
+| `0x5DC5570BA0` | 161.15 m | −230.83 m | −104.07 m | ΔZ ≈ 0.06 m |
 
-**Container-Objekt (USceneComponent):** `0x5DC5570B20`
-**FVector-Offset innerhalb des Objekts:** `+0x80`
-
-### Back-Pointer-Analyse
+**Container-Objekt (USceneComponent):** `0x5DC5570B20` — `FVector`-Offset: `+0x80`
 
 ```
 Pointer bei 0x5DC55706A0  →  0x5DC5570B20  (FVector @ struct+0x80)
 Pointer bei 0x5DC5570720  →  0x5DC5570B20  (FVector @ struct+0x80)
 ```
 
-Das bedeutet: Irgendetwas bei `0x5DC55706A0` (und `0x5DC5570720`) enthält
-einen Zeiger auf die Component. Das Objekt, das `0x5DC55706A0` enthält,
-ist vermutlich der Pawn (oder ein AActor).
-
-**Offene Frage:** Was ist das Objekt, das `0x5DC55706A0` als Feld besitzt?
-→ Dessen Basis-Adresse ergibt `OFF_ROOT_COMPONENT = 0x5DC55706A0 - obj_base`.
-
 ---
 
 ## Nächste Schritte
 
-1. **`--trace` ausführen** (Spieler muss online sein):
+1. **`--trace` erneut ausführen** (Spieler muss online sein, Bug ist jetzt behoben):
    ```
    python memory_reader.py --trace
    ```
-   Liefert `OFF_PAWN_PRIVATE`, `OFF_ROOT_COMPONENT`, `OFF_REL_LOCATION`.
+   Liefert `offsets.json` mit `OFF_PAWN_PRIVATE`, `OFF_ROOT_COMPONENT`, `OFF_REL_LOCATION`.
 
-2. **Offsets in `memory_reader.py` eintragen** (Zeilen 65–73).
-
-3. **`--loop` Mode testen**:
+2. **`--loop` Mode testen**:
    ```
    python memory_reader.py --loop 2
    ```
    Schreibt alle 2 s nach `live_players.json`.
 
-4. **`index.html` anpassen**: `players.json` → `live_players.json` (oder `--output players.json` nutzen).
+3. **`index.html` anpassen**: `--output players.json` nutzen oder direkt auf `live_players.json` umstellen.
 
 ---
 
@@ -120,24 +129,28 @@ ist vermutlich der Pawn (oder ein AActor).
 | Datei | Zweck |
 |---|---|
 | `memory_reader.py` | Live-Reader via ReadProcessMemory |
-| `parse_players.py` | Einmalig aus GD.json / Lokal.json parsen → `players.json` |
+| `offsets.json` | Automatisch von `--trace` generiert; `OFF_PAWN_PRIVATE`, `OFF_ROOT_COMPONENT`, `OFF_REL_LOCATION` |
+| `parse_players.py` | Einmalig aus GD.json parsen → `players.json` (Referenz für `--trace`) |
 | `read_save.py` | Vollständiger Save-Parser → `savegame.json` + `players.json` |
-| `players.json` | Ausgabe von parse_players.py — **nicht überschreiben** |
-| `live_players.json` | Ausgabe von memory_reader.py (Live-Daten) |
+| `live_players.json` | Ausgabe von `memory_reader.py` (Live-Daten) |
 | `index.html` | Leaflet-Karte, pollt alle 5 s |
-| `Lokal.json` | Aktueller Dedicated-Server-Speicherstand |
 
 ---
 
 ## Bekannte Probleme / Notizen
 
+- **`--trace` scannte nur Modul-Image (behoben):** `trace_pointer_chain` bekam bisher
+  `readable_regions_in_module()` übergeben — das sind nur die 105 MB des `.exe`-Images.
+  `UObject`-Heap-Daten liegen bei Adressen wie `0x1C4...` weit außerhalb.
+  Fix: `main()` übergibt nun `_all_readable_regions()` (kompletter Prozess-Adressraum).
+
 - **Exakter float32-Scan schlägt fehl**: Die Bytes im Speicher stimmen nicht bit-exakt mit
-  den aus dem Save geparsten Werten überein (geringe Positions-Drift oder unterschiedliche
-  Float-Darstellung). Lösung: Y-Anker-Scan mit ±1000 cm Toleranz, dann XYZ-Validierung.
+  den aus dem Save geparsten Werten überein (geringe Positions-Drift oder Float-Rundung).
+  Lösung: Y-Anker-Scan mit ±1000 cm Toleranz, dann XYZ-Validierung mit ±50 cm.
 
 - **`modBaseSize = 0`** in MODULEENTRY32: Bei manchen Prozessen liefert die Windows-API
-  die Modulgröße als 0. Workaround: Hardcoded `0x10_000_000` (105 MB) oder
-  VirtualQueryEx-basierte Region-Enumeration.
+  die Modulgröße als 0. Workaround: VirtualQueryEx-basierte Region-Enumeration
+  (`readable_regions_in_module`).
 
 - **False-Positives bei GWorld**: Niagara-CVar-Text liegt im `.rdata`-Bereich und sieht
   kurz wie ein GWorld-Pointer aus. Fix: Zieladresse darf nicht im Modul-Image liegen +
@@ -148,4 +161,4 @@ ist vermutlich der Pawn (oder ein AActor).
 
 - **`IcarusServer.exe` vs. `IcarusServer-Win64-Shipping.exe`**: Mehrere Prozesse laufen
   gleichzeitig. Nur der `-Win64-Shipping`-Prozess enthält die echten Spieldaten.
-  PROCESS_NAMES hat diesen jetzt an erster Stelle.
+  `PROCESS_NAMES` hat diesen an erster Stelle.

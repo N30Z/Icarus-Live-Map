@@ -1,0 +1,7 @@
+cl : Befehlszeile warning D9024 : Unbekannter Typ der Quelldatei "C:\Program", Objektdatei wird angenommen.
+cl : Befehlszeile warning D9024 : Unbekannter Typ der Quelldatei "Files\Microsoft", Objektdatei wird angenommen.
+cl : Befehlszeile warning D9024 : Unbekannter Typ der Quelldatei "Visual", Objektdatei wird angenommen.
+cl : Befehlszeile warning D9024 : Unbekannter Typ der Quelldatei "Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe", Objektdatei wird angenommen.
+LiveMapMod.cpp
+LINK : fatal error LNK1181: Eingabedatei "C:\Program.obj" kann nicht ge”ffnet werden.
+[!] FEHLER 

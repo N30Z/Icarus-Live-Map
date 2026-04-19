@@ -1,0 +1,30 @@
+UnrealModLoader Created by ~Russell.J Release V 2.3.0
+Adapted by edmiester777 for use with Icarus
+Executable directory does not contain valid PDB. Attempting to make symlink...
+Failed to copy symbols to current directory. Mods may be unstable.
+Profile Detected: IcarusServer-Win64-Shipping
+FoundNamePool: 0x000000014613F680
+Failed to locate definition for GCoreObjectArrayForDebugVisualizers - mods may be unstable.
+Failed to locate definition for GWorld - mods may be unstable.
+Failed to locate definition for AGameModeBase::InitGameState - mods may be unstable.
+Failed to locate definition for AActor::BeginPlay - mods may be unstable.
+Failed to locate definition for StaticLoadObject - mods may be unstable.
+Failed to locate definition for UWorld::SpawnActor - mods may be unstable.
+Failed to locate definition for UObject::CallFunctionByNameWithArguments - mods may be unstable.
+Failed to locate definition for UObject::ProcessEvent - mods may be unstable.
+Failed to locate definition for UObject::ProcessInternal - mods may be unstable.
+Failed to locate definition for UClass::CreateDefaultObject - mods may be unstable.
+Failed to locate definition for StaticConstructObject_Internal - mods may be unstable.
+Setting Up Loader
+MinHook Setup
+Loading Core Mods
+Core Mod Created: LiveMapMod
+ScanLoadedPaks Setup
+Failed to create hook: AGameModeBase::InitGameState
+Failed to create hook: AActor::BeginPlay
+Loading config from: Z:\home\container\Icarus\Binaries\Win64\daedalus.ini
+Config loaded - Renderer: ForceDX11, MenuKey: 0x70
+CreateUILogicThread Called
+Setting up D3D11Present hook
+Added hook: DX11-ResizeBuffers
+Added hook: DX11-Present

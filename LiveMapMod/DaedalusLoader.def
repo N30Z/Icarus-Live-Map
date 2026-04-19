@@ -1,0 +1,18 @@
+LIBRARY DaedalusLoader
+EXPORTS
+    ??0Mod@@QEAA@$$QEAV0@@Z
+    ??0Mod@@QEAA@AEBV0@@Z
+    ??0Mod@@QEAA@XZ
+    ??1Mod@@QEAA@XZ
+    ??_7Mod@@6B@ DATA
+    ?ModRef@Mod@@2PEAV1@EA DATA
+    ?CompleteModCreation@Mod@@QEAAXXZ
+    ?SetupHooks@Mod@@QEAAXXZ
+    ?InitializeMod@Mod@@UEAAXXZ
+    ?InitGameState@Mod@@UEAAXXZ
+    ?DrawImGui@Mod@@UEAAXXZ
+    ?BeginPlay@Mod@@UEAAXPEAVAActor@UE4@@@Z
+    ?PostBeginPlay@Mod@@UEAAXV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@PEAVAActor@UE4@@@Z
+    ?DX11Present@Mod@@UEAAXPEAUID3D11Device@@PEAUID3D11DeviceContext@@PEAUID3D11RenderTargetView@@@Z
+    ?DX12Present@Mod@@UEAAXPEAUIDXGISwapChain@@PEAUID3D12GraphicsCommandList@@@Z
+    ?OnModMenuButtonPressed@Mod@@UEAAXXZ
