@@ -1,0 +1,25 @@
+{
+  "_comment": "Icarus Live Map — Linux server configuration. Restart server.py after editing.",
+
+  "port": 9090,
+
+  "live": {
+    "_comment_live": "How to read the currently running prospect's GD.json for live player positions.",
+
+    "host_save_path": "",
+    "_comment_host":  "Fastest option: mount the Docker volume and set the path here. Example: /mnt/icarus/Saved/PlayerData/DedicatedServer/Prospects/GD.json",
+
+    "docker_container": "icarus-server",
+    "docker_save_path": "/home/icarus/Saved/PlayerData/DedicatedServer/Prospects/GD.json",
+    "_comment_docker": "Used only when host_save_path is empty. The server runs 'docker exec <container> cat <path>' every poll_interval_players seconds."
+  },
+
+  "savegames_dir": "./savegames",
+  "_comment_sg":    "Directory containing GD.json files for POI display (caves, deposits, geysers). Each file appears as a selectable savegame in the browser UI. You can name them anything (e.g. Olympus.json, Styx.json, Prospect1.json).",
+
+  "poll_interval_players": 5,
+  "_comment_poll":   "How often (seconds) to re-read the live save for player positions.",
+
+  "savegames_scan_interval": 30,
+  "_comment_scan":   "How often (seconds) to rescan savegames_dir for new or changed files."
+}
