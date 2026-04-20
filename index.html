@@ -187,6 +187,9 @@
     }
     .leaflet-tooltip.player-label::before { display: none; }
 
+    /* ── Cave icons ──────────────────────────────────────────────── */
+    .cave-icon { background: none !important; border: none !important; }
+
     /* ── Coord bar ───────────────────────────────────────────────── */
     #coords {
       position: absolute;
@@ -356,7 +359,7 @@
     <select id="sg-select" onchange="onSavegameSelect(this.value)">
       <option value="">— None —</option>
     </select>
-    <button id="sg-reload-btn" title="Refresh savegame list" onclick="fetchSavegames()">⟳</button>
+    <button id="sg-reload-btn" title="Pull saves from Docker &amp; refresh list" onclick="pullAndFetchSavegames()">⟳</button>
   </div>
 
   <div id="status">
@@ -409,6 +412,12 @@
     </div>
     <div id="settings-body" class="panel-body collapsed">
       <div class="setting-row">
+        <span class="setting-label">Poll (s)</span>
+        <input type="range" min="1" max="30" step="1" value="5"
+               oninput="setPollInterval(this.value)" id="poll-interval-range" />
+        <span class="setting-val" id="val-poll">5s</span>
+      </div>
+      <div class="setting-row">
         <span class="setting-label">Players</span>
         <input type="range" min="0" max="1" step="0.05" value="0.85"
                oninput="setOpacity('player', this.value)" id="opacity-player" />
@@ -443,10 +452,10 @@
 // ═══════════════════════════════════════════════════════════════
 
 const MAPS = {
-  olympus:    { label: 'Olympus',    image: 'maps/olympus.jpg',    min: -4096, max: 4096 },
-  styx:       { label: 'Styx',       image: 'maps/styx.jpg',       min: -4096, max: 4096 },
-  prometheus: { label: 'Prometheus', image: 'maps/prometheus.jpg', min: -4096, max: 4096 },
-  elysium:    { label: 'Elysium',    image: 'maps/elysium.jpg',    min: -4096, max: 4096 },
+  olympus:    { label: 'Olympus',    image: 'maps/olympus.jpg',    min: -4096, max: 4096, caves: 'caves/olympus.json' },
+  styx:       { label: 'Styx',       image: 'maps/styx.jpg',       min: -4096, max: 4096, caves: 'caves/styx.json' },
+  prometheus: { label: 'Prometheus', image: 'maps/prometheus.jpg', min: -4096, max: 4096, caves: 'caves/prometheus.json' },
+  elysium:    { label: 'Elysium',    image: 'maps/elysium.jpg',    min: -4096, max: 4096, caves: 'caves/elysium.json' },
 };
 
 const PLAYER_COLOURS = [
@@ -460,7 +469,7 @@ const ORE_COLOR = {
   Salt:'#f0eee8', Stone:'#966f50', Exotic:'#cc22cc',
 };
 
-const POLL_INTERVAL_MS    = 5000;
+let   POLL_INTERVAL_MS    = parseInt(localStorage.getItem('pollIntervalS') || '5', 10) * 1000;
 const SG_REFRESH_MS       = 30000;
 const PARSE_POLL_MS       = 3000;  // re-poll /api/poi while server is parsing
 
@@ -482,7 +491,10 @@ function setOpacity(type, val) {
     enzymeLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
     oilLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.geyser }));
   } else if (type === 'cave')
-    caveLayer.eachLayer(m => m.setStyle({ fillOpacity: opacity.cave }));
+    caveLayer.eachLayer(m => {
+      const el = m.getElement();
+      if (el) el.querySelectorAll('img').forEach(img => { img.style.opacity = opacity.cave; });
+    });
   else if (type === 'deposit')
     applyDepositOpacity();
 }
@@ -571,6 +583,7 @@ function switchMap(id) {
   buildMapImage(cfg, mapTileLayer);
   map.setMaxBounds([[cfg.min*1.1, cfg.min*1.1], [cfg.max*1.1, cfg.max*1.1]]);
   map.fitBounds(bounds);
+  loadStaticCaves(id);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -582,6 +595,8 @@ const enzymeLayer  = L.layerGroup().addTo(map);
 const oilLayer     = L.layerGroup().addTo(map);
 const caveLayer    = L.layerGroup().addTo(map);
 const depositLayer = L.layerGroup();
+
+loadStaticCaves(currentMapId);
 
 L.control.layers({}, {
   'Enzyme Geysers': enzymeLayer,
@@ -706,18 +721,86 @@ document.getElementById('exotic-btn').addEventListener('click', () => {
 //  DRAW POI LAYERS
 // ═══════════════════════════════════════════════════════════════
 
-function parseCaveClass(ac) {
-  const m = /CaveEntrance_([A-Z]+)_([A-Z]+)/i.exec(ac || '');
-  if (!m) return '';
-  const b = { CF: 'Conifer Forest', AC: 'Arctic', DC: 'Desert' }[m[1].toUpperCase()] || m[1];
-  const s = { SML: 'Small', MED: 'Medium', LRG: 'Large' }[m[2].toUpperCase()] || m[2];
-  return b && s ? `${b} · ${s}` : b || s;
+function caveTier(oc) {
+  const n = parseInt(oc, 10);
+  if (!oc || isNaN(n) || n <= 0) return null;
+  if (n <= 24) return 1;
+  if (n <= 34) return 2;
+  if (n <= 54) return 3;
+  return 5;
+}
+
+function buildCaveTooltip(c) {
+  const tier    = caveTier(c.oc);
+  const tierStr = tier ? `T${tier}` : '?';
+  const sizeStr = c.size ? c.size.charAt(0).toUpperCase() + c.size.slice(1) : '?';
+  const facing  = c.yaw != null ? `<br>Facing ${yawToCompass(c.yaw)} (${c.yaw}°)` : '';
+  const ores    = c.oc  ? `<br>Ores: ${c.oc}${c.foc ? '+' : ''}${c.doc ? ` (${c.doc} deep)` : ''}` : '';
+  const flags   = [
+    c.tun && 'Tunnel',
+    c.haz && 'Pit hazard',
+    c.uw  && 'Underwater',
+    c.ug  && 'Underground',
+    c.wat && 'Water',
+    c.fsh && 'Fish',
+    c.msh && 'Mushrooms',
+    c.wf  && 'Waterfall',
+    c.fld && 'Flooded',
+    c.rem && 'Removed',
+  ].filter(Boolean);
+  const worms   = c.hw ? `<br>Worms: ${c.wmin ?? 0}–${c.wmax ?? '?'}` : '';
+  const bees    = c.hb ? `<br>Bees: ${c.bmin ?? 0}–${c.bmax ?? '?'}` : '';
+  const grid    = c.gid ? ` [${c.gid}]` : '';
+  const note    = c.n  ? `<br><i>${c.n}</i>` : '';
+  const flagStr = flags.length ? `<br>${flags.join(' · ')}` : '';
+  return `<b>Cave #${c.id}${grid}</b><br>Tier ${tierStr} · ${sizeStr}${ores}${facing}${flagStr}${worms}${bees}${note}`;
+}
+
+function createCaveIcon(c) {
+  const tier    = caveTier(c.oc);
+  const rankSrc = tier ? `icon/rank${tier}.png` : null;
+  const baseSrc = c.uw ? 'icon/cave_uw.png' : c.ug ? 'icon/cave_ug.png' : 'icon/cave.png';
+  const rot     = c.yaw || 0;
+  // Rotate around bottom-centre (16px, 32px) — the anchor point
+  const html = `
+    <div style="position:relative;width:32px;height:32px;
+                transform:rotate(${rot}deg);transform-origin:16px 32px;">
+      <img src="${baseSrc}" style="position:absolute;width:32px;height:32px;opacity:${opacity.cave};">
+      ${c.tun ? '<img src="icon/cave_tn.png" style="position:absolute;width:32px;height:32px;">' : ''}
+      ${rankSrc ? `<img src="${rankSrc}" style="position:absolute;top:0;left:0;width:20px;height:20px;margin-top:4px;">` : ''}
+      ${c.haz             ? '<img src="icon/dang.png" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:12px;height:12px;">' : ''}
+      ${(c.rem || c.unf) ? '<img src="icon/cave_rm.png" style="position:absolute;width:32px;height:32px;">' : ''}
+    </div>`;
+  return L.divIcon({
+    className: 'cave-icon',
+    html,
+    iconSize:    [32, 32],
+    iconAnchor:  [16, 32],
+    popupAnchor: [0, -32],
+  });
+}
+
+async function loadStaticCaves(mapId) {
+  const cfg = MAPS[mapId];
+  caveLayer.clearLayers();
+  if (!cfg?.caves) return;
+  try {
+    const res = await fetch(cfg.caves);
+    if (!res.ok) return;
+    const caves = await res.json();
+    caves.forEach(c => {
+      L.marker(toLatLng(c.x_m, c.y_m), { icon: createCaveIcon(c) })
+       .bindTooltip(buildCaveTooltip(c))
+       .addTo(caveLayer);
+    });
+  } catch (err) {
+    console.warn('loadStaticCaves:', err);
+  }
 }
 
 function drawStaticPOIs(data) {
   enzymeLayer.clearLayers();
   oilLayer.clearLayers();
-  caveLayer.clearLayers();
   for (const ore of Object.keys(oreSubLayers)) oreSubLayers[ore].clearLayers();
 
   (data.geysers?.enzyme || []).forEach(g => {
@@ -729,15 +812,6 @@ function drawStaticPOIs(data) {
   (data.geysers?.oil || []).forEach(g => {
     L.circleMarker(toLatLng(g.x_m, g.y_m), { radius: 7, color: '#78350f', fillColor: '#b45309', fillOpacity: opacity.geyser, weight: 2 })
      .bindTooltip('<b>Oil Geyser</b><br>Active: ' + (g.active ? 'yes' : 'no')).addTo(oilLayer);
-  });
-
-  (data.caves || []).forEach(c => {
-    const info   = parseCaveClass(c.actor_class);
-    const facing = c.yaw != null ? `<br>Facing ${yawToCompass(c.yaw)} (${c.yaw.toFixed(1)}°)` : '';
-    const mined  = c.fully_mined ? '<br><b>⛏ Mined out</b>' : '';
-    const tip    = `<b>Cave Entrance</b>${info ? `<br>${info}` : ''}${mined}${facing}`;
-    L.circleMarker(toLatLng(c.x_m, c.y_m), { radius: 5, color: '#9ca3af', fillColor: '#374151', fillOpacity: opacity.cave, weight: 2 })
-     .bindTooltip(tip).addTo(caveLayer);
   });
 
   (data.deposits || []).forEach(d => {
@@ -917,6 +991,27 @@ function setStatus(state, text) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  POLL INTERVAL
+// ═══════════════════════════════════════════════════════════════
+
+function setPollInterval(secs) {
+  const s = Math.max(1, Math.min(30, parseInt(secs, 10)));
+  POLL_INTERVAL_MS = s * 1000;
+  localStorage.setItem('pollIntervalS', String(s));
+  document.getElementById('val-poll').textContent = s + 's';
+}
+
+// Restore saved value into the slider on load
+(function initPollSlider() {
+  const saved = parseInt(localStorage.getItem('pollIntervalS') || '5', 10);
+  const range = document.getElementById('poll-interval-range');
+  if (range) {
+    range.value = saved;
+    document.getElementById('val-poll').textContent = saved + 's';
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════
 //  SAVEGAME LIST  (/api/savegames)
 // ═══════════════════════════════════════════════════════════════
 
@@ -937,7 +1032,7 @@ async function fetchSavegames() {
       opt.value    = sg.id;
       const status = sg.status === 'parsing' ? ' ⟳' : sg.status === 'ready' ? ' ✓' : sg.status === 'error' ? ' ✗' : '';
       opt.textContent = sg.name + status;
-      if (sg.value === current) opt.selected = true;
+      if (sg.id === current) opt.selected = true;
       sel.appendChild(opt);
     });
     // Restore previous selection
@@ -945,6 +1040,19 @@ async function fetchSavegames() {
   } catch (e) {
     console.warn('Savegame list error:', e.message);
   }
+}
+
+async function pullAndFetchSavegames() {
+  const btn = document.getElementById('sg-reload-btn');
+  btn.textContent = '…';
+  btn.disabled = true;
+  try {
+    // Ask server to docker cp savegames from DOCKER_SAVE_PATH → local savegames/
+    await fetch('/api/pull-saves', { method: 'POST' });
+  } catch (_) { /* ignore if docker not available */ }
+  await fetchSavegames();
+  btn.textContent = '⟳';
+  btn.disabled = false;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -998,11 +1106,10 @@ async function loadSavegamePOI(filename) {
 
     drawStaticPOIs(data);
 
-    const caves    = (data.caves || []).length;
     const deposits = (data.deposits || []).length;
     const e        = (data.geysers?.enzyme || []).length;
     const o        = (data.geysers?.oil || []).length;
-    setStatus('ok', `${caves} caves · ${deposits} deposits · ${e + o} geysers`);
+    setStatus('ok', `${deposits} deposits · ${e + o} geysers`);
 
     // Refresh savegame list so status badge updates
     fetchSavegames();

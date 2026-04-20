@@ -738,6 +738,14 @@ def load_binary(path=None):
     return zlib.decompress(base64.b64decode(raw["ProspectBlob"]["BinaryBlob"]))
 
 
+def load_binary_from_content(content):
+    """Decompress the ProspectBlob from GD.json content (bytes or str)."""
+    if isinstance(content, (bytes, bytearray)):
+        content = content.decode("utf-8", errors="replace")
+    raw = json.loads(content)
+    return zlib.decompress(base64.b64decode(raw["ProspectBlob"]["BinaryBlob"]))
+
+
 def _read_prop_val(d, p, ptype):
     """Read an FProperty value starting at p (right after the name FString null).
     ptype: 'name' | 'str' | 'float_bits' | 'bool' | 'int'
