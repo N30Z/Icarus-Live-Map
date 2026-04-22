@@ -69,6 +69,8 @@ static void LoadConfig()
 // Debug-Log (neben OutputPath)
 // ---------------------------------------------------------------------------
 
+static const DWORD MAX_LOG_BYTES = 1024 * 1024; // 1 MB ≈ 10 000–15 000 lines
+
 static void DebugLog(const char* msg)
 {
     wchar_t logPath[MAX_PATH];
@@ -80,7 +82,15 @@ static void DebugLog(const char* msg)
     HANDLE hFile = CreateFileW(logPath, GENERIC_WRITE, FILE_SHARE_READ,
                                nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile == INVALID_HANDLE_VALUE) return;
-    SetFilePointer(hFile, 0, nullptr, FILE_END);
+
+    // Truncate when the log exceeds the size cap to keep disk usage bounded.
+    DWORD szHigh = 0;
+    if (GetFileSize(hFile, &szHigh) > MAX_LOG_BYTES || szHigh > 0) {
+        SetFilePointer(hFile, 0, nullptr, FILE_BEGIN);
+        SetEndOfFile(hFile);
+    } else {
+        SetFilePointer(hFile, 0, nullptr, FILE_END);
+    }
 
     SYSTEMTIME st{};
     GetLocalTime(&st);
